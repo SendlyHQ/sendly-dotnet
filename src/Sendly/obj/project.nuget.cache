@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "BwiO6usG4Us=",
+  "success": true,
+  "projectFilePath": "/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/Sendly.csproj",
+  "expectedPackageFiles": [
+    "/Users/sarang/.nuget/packages/system.text.json/8.0.5/system.text.json.8.0.5.nupkg.sha512",
+    "/Users/sarang/.nuget/packages/microsoft.netcore.app.ref/8.0.19/microsoft.netcore.app.ref.8.0.19.nupkg.sha512",
+    "/Users/sarang/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.19/microsoft.aspnetcore.app.ref.8.0.19.nupkg.sha512"
+  ],
+  "logs": []
+}

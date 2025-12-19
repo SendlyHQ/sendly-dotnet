@@ -1,0 +1,14 @@
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/bin/Release/net8.0/Sendly.deps.json
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/bin/Release/net8.0/Sendly.dll
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/bin/Release/net8.0/Sendly.pdb
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/bin/Release/net8.0/Sendly.xml
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/obj/Release/net8.0/Sendly.GeneratedMSBuildEditorConfig.editorconfig
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/obj/Release/net8.0/Sendly.AssemblyInfoInputs.cache
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/obj/Release/net8.0/Sendly.AssemblyInfo.cs
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/obj/Release/net8.0/Sendly.csproj.CoreCompileInputs.cache
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/obj/Release/net8.0/Sendly.sourcelink.json
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/obj/Release/net8.0/Sendly.dll
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/obj/Release/net8.0/refint/Sendly.dll
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/obj/Release/net8.0/Sendly.xml
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/obj/Release/net8.0/Sendly.pdb
+/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/obj/Release/net8.0/ref/Sendly.dll

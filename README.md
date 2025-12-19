@@ -9,13 +9,14 @@ Official .NET SDK for the Sendly SMS API.
 ## Installation
 
 ```bash
+# .NET CLI
 dotnet add package Sendly
-```
 
-Or via Package Manager:
-
-```powershell
+# Package Manager Console
 Install-Package Sendly
+
+# PackageReference (add to .csproj)
+<PackageReference Include="Sendly" Version="1.1.0" />
 ```
 
 ## Quick Start

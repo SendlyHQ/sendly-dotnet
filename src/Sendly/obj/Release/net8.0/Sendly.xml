@@ -1,0 +1,1091 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Sendly</name>
+    </assembly>
+    <members>
+        <member name="T:Sendly.Exceptions.AuthenticationException">
+            <summary>
+            Thrown when the API key is invalid or missing.
+            </summary>
+        </member>
+        <member name="M:Sendly.Exceptions.AuthenticationException.#ctor(System.String)">
+            <summary>
+            Creates a new AuthenticationException.
+            </summary>
+        </member>
+        <member name="T:Sendly.Exceptions.InsufficientCreditsException">
+            <summary>
+            Thrown when the account has insufficient credits.
+            </summary>
+        </member>
+        <member name="M:Sendly.Exceptions.InsufficientCreditsException.#ctor(System.String)">
+            <summary>
+            Creates a new InsufficientCreditsException.
+            </summary>
+        </member>
+        <member name="T:Sendly.Exceptions.NetworkException">
+            <summary>
+            Thrown when a network error occurs.
+            </summary>
+        </member>
+        <member name="M:Sendly.Exceptions.NetworkException.#ctor(System.String,System.Exception)">
+            <summary>
+            Creates a new NetworkException.
+            </summary>
+        </member>
+        <member name="T:Sendly.Exceptions.NotFoundException">
+            <summary>
+            Thrown when the requested resource is not found.
+            </summary>
+        </member>
+        <member name="M:Sendly.Exceptions.NotFoundException.#ctor(System.String)">
+            <summary>
+            Creates a new NotFoundException.
+            </summary>
+        </member>
+        <member name="T:Sendly.Exceptions.RateLimitException">
+            <summary>
+            Thrown when the rate limit is exceeded.
+            </summary>
+        </member>
+        <member name="P:Sendly.Exceptions.RateLimitException.RetryAfter">
+            <summary>
+            Time to wait before retrying.
+            </summary>
+        </member>
+        <member name="M:Sendly.Exceptions.RateLimitException.#ctor(System.String,System.Nullable{System.TimeSpan})">
+            <summary>
+            Creates a new RateLimitException.
+            </summary>
+        </member>
+        <member name="T:Sendly.Exceptions.SendlyException">
+            <summary>
+            Base exception for all Sendly errors.
+            </summary>
+        </member>
+        <member name="P:Sendly.Exceptions.SendlyException.StatusCode">
+            <summary>
+            HTTP status code.
+            </summary>
+        </member>
+        <member name="P:Sendly.Exceptions.SendlyException.ErrorCode">
+            <summary>
+            Error code.
+            </summary>
+        </member>
+        <member name="M:Sendly.Exceptions.SendlyException.#ctor(System.String,System.Int32,System.String,System.Exception)">
+            <summary>
+            Creates a new SendlyException.
+            </summary>
+        </member>
+        <member name="T:Sendly.Exceptions.ValidationException">
+            <summary>
+            Thrown when the request contains invalid parameters.
+            </summary>
+        </member>
+        <member name="M:Sendly.Exceptions.ValidationException.#ctor(System.String)">
+            <summary>
+            Creates a new ValidationException.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.BatchList">
+            <summary>
+            A paginated list of message batches.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchList.Data">
+            <summary>
+            The batches in this page.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchList.Total">
+            <summary>
+            Total number of batches.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchList.Limit">
+            <summary>
+            The limit used for this request.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchList.Offset">
+            <summary>
+            The offset used for this request.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchList.HasMore">
+            <summary>
+            Whether there are more results.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.BatchMessageItem">
+            <summary>
+            Represents a single message in a batch send request.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageItem.To">
+            <summary>
+            Recipient phone number in E.164 format.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageItem.Text">
+            <summary>
+            Message content.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.BatchMessageItem.#ctor(System.String,System.String)">
+            <summary>
+            Creates a new batch message item.
+            </summary>
+            <param name="to">Recipient phone number in E.164 format</param>
+            <param name="text">Message content</param>
+        </member>
+        <member name="T:Sendly.Models.BatchMessageResponse">
+            <summary>
+            Response from a batch send operation.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.BatchMessageResponse.Statuses">
+            <summary>
+            Batch status constants.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.BatchId">
+            <summary>
+            Unique batch identifier.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.Status">
+            <summary>
+            Batch status.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.Total">
+            <summary>
+            Total number of messages in the batch.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.Queued">
+            <summary>
+            Number of messages queued successfully.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.Failed">
+            <summary>
+            Number of messages that failed.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.CreditsUsed">
+            <summary>
+            Total credits used.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.Messages">
+            <summary>
+            Individual message results.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.CreatedAt">
+            <summary>
+            Creation timestamp.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.CompletedAt">
+            <summary>
+            Completion timestamp.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.IsProcessing">
+            <summary>
+            Whether the batch is still processing.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.IsCompleted">
+            <summary>
+            Whether the batch completed successfully.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.IsPartiallyCompleted">
+            <summary>
+            Whether the batch completed with some failures.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResponse.IsFailed">
+            <summary>
+            Whether all messages in the batch failed.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.BatchMessageResponse.FromJson(System.Text.Json.JsonElement,System.Text.Json.JsonSerializerOptions)">
+            <summary>
+            Creates a BatchMessageResponse from a JSON element.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.BatchMessageResult">
+            <summary>
+            Represents the result of a single message in a batch.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResult.Id">
+            <summary>
+            Message ID (if successfully queued).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResult.To">
+            <summary>
+            Recipient phone number.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResult.Status">
+            <summary>
+            Status of this message in the batch.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResult.Error">
+            <summary>
+            Error message (if failed).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResult.IsSuccess">
+            <summary>
+            Whether this message was queued successfully.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.BatchMessageResult.IsFailed">
+            <summary>
+            Whether this message failed.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.BatchMessageResult.FromJson(System.Text.Json.JsonElement,System.Text.Json.JsonSerializerOptions)">
+            <summary>
+            Creates a BatchMessageResult from a JSON element.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.CancelScheduledMessageResponse">
+            <summary>
+            Response from cancelling a scheduled message.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.CancelScheduledMessageResponse.Id">
+            <summary>
+            The cancelled message ID.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.CancelScheduledMessageResponse.Status">
+            <summary>
+            The new status (should be "cancelled").
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.CancelScheduledMessageResponse.CreditsRefunded">
+            <summary>
+            Credits refunded from cancellation.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.CancelScheduledMessageResponse.CancelledAt">
+            <summary>
+            Cancellation timestamp.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.CancelScheduledMessageResponse.FromJson(System.Text.Json.JsonElement,System.Text.Json.JsonSerializerOptions)">
+            <summary>
+            Creates a CancelScheduledMessageResponse from a JSON element.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.ListBatchesOptions">
+            <summary>
+            Options for listing message batches.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ListBatchesOptions.Limit">
+            <summary>
+            Maximum number of results to return.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ListBatchesOptions.Offset">
+            <summary>
+            Number of results to skip.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ListBatchesOptions.Status">
+            <summary>
+            Filter by status.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.ListBatchesOptions.ToQueryParams">
+            <summary>
+            Converts options to query parameters.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.ListMessagesOptions">
+            <summary>
+            Options for listing messages.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ListMessagesOptions.Limit">
+            <summary>
+            Maximum messages to return (default: 20, max: 100).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ListMessagesOptions.Offset">
+            <summary>
+            Number of messages to skip.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ListMessagesOptions.Status">
+            <summary>
+            Filter by status.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ListMessagesOptions.To">
+            <summary>
+            Filter by recipient phone number.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.ListMessagesOptions.ToQueryParams">
+            <summary>
+            Converts to query parameters.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.ListScheduledMessagesOptions">
+            <summary>
+            Options for listing scheduled messages.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ListScheduledMessagesOptions.Limit">
+            <summary>
+            Maximum number of results to return.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ListScheduledMessagesOptions.Offset">
+            <summary>
+            Number of results to skip.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ListScheduledMessagesOptions.Status">
+            <summary>
+            Filter by status.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.ListScheduledMessagesOptions.ToQueryParams">
+            <summary>
+            Converts options to query parameters.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.Message">
+            <summary>
+            Represents an SMS message.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.Message.Statuses">
+            <summary>
+            Message status constants.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.Id">
+            <summary>
+            Unique message identifier.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.To">
+            <summary>
+            Recipient phone number in E.164 format.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.Text">
+            <summary>
+            Message content.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.Status">
+            <summary>
+            Delivery status.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.CreditsUsed">
+            <summary>
+            Credits consumed.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.CreatedAt">
+            <summary>
+            Creation timestamp.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.UpdatedAt">
+            <summary>
+            Last update timestamp.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.DeliveredAt">
+            <summary>
+            Delivery timestamp (if delivered).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.ErrorCode">
+            <summary>
+            Error code (if failed).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.ErrorMessage">
+            <summary>
+            Error message (if failed).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.IsDelivered">
+            <summary>
+            Whether the message was delivered.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.IsFailed">
+            <summary>
+            Whether the message failed.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.Message.IsPending">
+            <summary>
+            Whether the message is pending.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.Message.FromJson(System.Text.Json.JsonElement,System.Text.Json.JsonSerializerOptions)">
+            <summary>
+            Creates a Message from a JSON element.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.MessageList">
+            <summary>
+            Represents a paginated list of messages.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.MessageList.Data">
+            <summary>
+            Messages in this page.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.MessageList.Total">
+            <summary>
+            Total number of messages.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.MessageList.Limit">
+            <summary>
+            Current page limit.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.MessageList.Offset">
+            <summary>
+            Current offset.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.MessageList.HasMore">
+            <summary>
+            Whether there are more pages.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.MessageList.Count">
+            <summary>
+            Number of messages in this page.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.MessageList.IsEmpty">
+            <summary>
+            Whether this page is empty.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.MessageList.First">
+            <summary>
+            Gets the first message.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.MessageList.Last">
+            <summary>
+            Gets the last message.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.MessageList.GetEnumerator">
+            <summary>
+            Gets the enumerator.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.MessageList.Item(System.Int32)">
+            <summary>
+            Gets a message by index.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.ScheduledMessage">
+            <summary>
+            Represents a scheduled SMS message.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.ScheduledMessage.Statuses">
+            <summary>
+            Scheduled message status constants.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.Id">
+            <summary>
+            Unique message identifier.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.To">
+            <summary>
+            Recipient phone number in E.164 format.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.Text">
+            <summary>
+            Message content.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.From">
+            <summary>
+            Sender ID (optional).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.Status">
+            <summary>
+            Current status.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.ScheduledAt">
+            <summary>
+            Scheduled delivery time.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.CreditsReserved">
+            <summary>
+            Credits reserved for this message.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.CreatedAt">
+            <summary>
+            Creation timestamp.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.CancelledAt">
+            <summary>
+            Cancellation timestamp (if cancelled).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.SentAt">
+            <summary>
+            Sent timestamp (if sent).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.Error">
+            <summary>
+            Error message (if failed).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.IsScheduled">
+            <summary>
+            Whether the message is still scheduled (pending delivery).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.IsSent">
+            <summary>
+            Whether the message was sent.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.IsCancelled">
+            <summary>
+            Whether the message was cancelled.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessage.IsFailed">
+            <summary>
+            Whether the message failed.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.ScheduledMessage.FromJson(System.Text.Json.JsonElement,System.Text.Json.JsonSerializerOptions)">
+            <summary>
+            Creates a ScheduledMessage from a JSON element.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.ScheduledMessageList">
+            <summary>
+            A paginated list of scheduled messages.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessageList.Data">
+            <summary>
+            The scheduled messages in this page.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessageList.Total">
+            <summary>
+            Total number of scheduled messages.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessageList.Limit">
+            <summary>
+            The limit used for this request.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessageList.Offset">
+            <summary>
+            The offset used for this request.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduledMessageList.HasMore">
+            <summary>
+            Whether there are more results.
+            </summary>
+        </member>
+        <member name="T:Sendly.Models.ScheduleMessageRequest">
+            <summary>
+            Request object for scheduling an SMS message.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduleMessageRequest.To">
+            <summary>
+            Recipient phone number in E.164 format.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduleMessageRequest.Text">
+            <summary>
+            Message content.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduleMessageRequest.ScheduledAt">
+            <summary>
+            ISO 8601 datetime for delivery (must be at least 1 minute in the future).
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.ScheduleMessageRequest.From">
+            <summary>
+            Optional sender ID.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.ScheduleMessageRequest.#ctor(System.String,System.String,System.String,System.String)">
+            <summary>
+            Creates a new schedule message request.
+            </summary>
+            <param name="to">Recipient phone number in E.164 format</param>
+            <param name="text">Message content</param>
+            <param name="scheduledAt">ISO 8601 datetime for delivery</param>
+            <param name="from">Optional sender ID</param>
+        </member>
+        <member name="T:Sendly.Models.SendBatchRequest">
+            <summary>
+            Request object for sending a batch of SMS messages.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.SendBatchRequest.Messages">
+            <summary>
+            List of messages to send.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.SendBatchRequest.From">
+            <summary>
+            Optional sender ID (applies to all messages).
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.SendBatchRequest.#ctor(System.Collections.Generic.List{Sendly.Models.BatchMessageItem},System.String)">
+            <summary>
+            Creates a new send batch request.
+            </summary>
+            <param name="messages">List of messages to send</param>
+            <param name="from">Optional sender ID</param>
+        </member>
+        <member name="M:Sendly.Models.SendBatchRequest.#ctor">
+            <summary>
+            Creates a new send batch request.
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.SendBatchRequest.AddMessage(System.String,System.String)">
+            <summary>
+            Adds a message to the batch.
+            </summary>
+            <param name="to">Recipient phone number in E.164 format</param>
+            <param name="text">Message content</param>
+            <returns>This request for chaining</returns>
+        </member>
+        <member name="T:Sendly.Models.SendMessageRequest">
+            <summary>
+            Request to send an SMS message.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.SendMessageRequest.To">
+            <summary>
+            Recipient phone number in E.164 format.
+            </summary>
+        </member>
+        <member name="P:Sendly.Models.SendMessageRequest.Text">
+            <summary>
+            Message content (max 1600 characters).
+            </summary>
+        </member>
+        <member name="M:Sendly.Models.SendMessageRequest.#ctor(System.String,System.String)">
+            <summary>
+            Creates a new send message request.
+            </summary>
+        </member>
+        <member name="T:Sendly.Resources.MessagesResource">
+            <summary>
+            Resource for sending and managing SMS messages.
+            </summary>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.SendAsync(System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Sends an SMS message.
+            </summary>
+            <param name="to">Recipient phone number in E.164 format</param>
+            <param name="text">Message content</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>The sent message</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.SendAsync(Sendly.Models.SendMessageRequest,System.Threading.CancellationToken)">
+            <summary>
+            Sends an SMS message.
+            </summary>
+            <param name="request">Send message request</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>The sent message</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.ListAsync(Sendly.Models.ListMessagesOptions,System.Threading.CancellationToken)">
+            <summary>
+            Lists messages.
+            </summary>
+            <param name="options">Query options</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>Paginated list of messages</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.GetAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Gets a message by ID.
+            </summary>
+            <param name="id">Message ID</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>The message</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.GetAllAsync(Sendly.Models.ListMessagesOptions,System.Threading.CancellationToken)">
+            <summary>
+            Iterates over all messages with automatic pagination.
+            </summary>
+            <param name="options">Query options</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>Async enumerable of messages</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.ScheduleAsync(System.String,System.String,System.String,System.Threading.CancellationToken)">
+            <summary>
+            Schedules a message for future delivery.
+            </summary>
+            <param name="to">Recipient phone number in E.164 format</param>
+            <param name="text">Message content</param>
+            <param name="scheduledAt">ISO 8601 datetime (must be at least 1 minute in the future)</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>The scheduled message</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.ScheduleAsync(Sendly.Models.ScheduleMessageRequest,System.Threading.CancellationToken)">
+            <summary>
+            Schedules a message for future delivery.
+            </summary>
+            <param name="request">Schedule message request</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>The scheduled message</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.ListScheduledAsync(Sendly.Models.ListScheduledMessagesOptions,System.Threading.CancellationToken)">
+            <summary>
+            Lists scheduled messages.
+            </summary>
+            <param name="options">Query options</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>Paginated list of scheduled messages</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.GetScheduledAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Gets a scheduled message by ID.
+            </summary>
+            <param name="id">Scheduled message ID</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>The scheduled message</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.CancelScheduledAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Cancels a scheduled message.
+            </summary>
+            <param name="id">Scheduled message ID</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>The cancellation response with refunded credits</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.SendBatchAsync(Sendly.Models.SendBatchRequest,System.Threading.CancellationToken)">
+            <summary>
+            Sends a batch of messages.
+            </summary>
+            <param name="request">Batch send request</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>The batch response with results</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.GetBatchAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Gets a batch by ID.
+            </summary>
+            <param name="batchId">Batch ID</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>The batch response</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.ListBatchesAsync(Sendly.Models.ListBatchesOptions,System.Threading.CancellationToken)">
+            <summary>
+            Lists all batches.
+            </summary>
+            <param name="options">Query options</param>
+            <param name="cancellationToken">Cancellation token</param>
+            <returns>Paginated list of batches</returns>
+        </member>
+        <member name="M:Sendly.Resources.MessagesResource.MyRegex">
+            <remarks>
+            Pattern:<br/>
+            <code>^\\+[1-9]\\d{1,14}$</code><br/>
+            Explanation:<br/>
+            <code>
+            ○ Match if at the beginning of the string.<br/>
+            ○ Match '+'.<br/>
+            ○ Match a character in the set [1-9].<br/>
+            ○ Match a Unicode digit atomically at least 1 and at most 14 times.<br/>
+            ○ Match if at the end of the string or if before an ending newline.<br/>
+            </code>
+            </remarks>
+        </member>
+        <member name="T:Sendly.SendlyClient">
+            <summary>
+            Sendly API Client for sending SMS messages.
+            </summary>
+        </member>
+        <member name="F:Sendly.SendlyClient.Version">
+            <summary>
+            SDK version.
+            </summary>
+        </member>
+        <member name="F:Sendly.SendlyClient.DefaultBaseUrl">
+            <summary>
+            Default API base URL.
+            </summary>
+        </member>
+        <member name="P:Sendly.SendlyClient.Messages">
+            <summary>
+            Gets the Messages resource.
+            </summary>
+        </member>
+        <member name="M:Sendly.SendlyClient.#ctor(System.String,Sendly.SendlyClientOptions)">
+            <summary>
+            Creates a new Sendly client.
+            </summary>
+            <param name="apiKey">Your Sendly API key</param>
+            <param name="options">Optional client configuration</param>
+        </member>
+        <member name="M:Sendly.SendlyClient.GetAsync(System.String,System.Collections.Generic.Dictionary{System.String,System.String},System.Threading.CancellationToken)">
+            <summary>
+            Makes a GET request.
+            </summary>
+        </member>
+        <member name="M:Sendly.SendlyClient.PostAsync``1(System.String,``0,System.Threading.CancellationToken)">
+            <summary>
+            Makes a POST request.
+            </summary>
+        </member>
+        <member name="M:Sendly.SendlyClient.DeleteAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Makes a DELETE request.
+            </summary>
+        </member>
+        <member name="P:Sendly.SendlyClient.JsonOptions">
+            <summary>
+            Gets the JSON serializer options.
+            </summary>
+        </member>
+        <member name="M:Sendly.SendlyClient.Dispose">
+            <summary>
+            Disposes the client.
+            </summary>
+        </member>
+        <member name="M:Sendly.SendlyClient.Dispose(System.Boolean)">
+            <summary>
+            Disposes the client.
+            </summary>
+        </member>
+        <member name="T:Sendly.SendlyClientOptions">
+            <summary>
+            Configuration options for the Sendly client.
+            </summary>
+        </member>
+        <member name="P:Sendly.SendlyClientOptions.BaseUrl">
+            <summary>
+            API base URL. Defaults to https://sendly.live/api/v1
+            </summary>
+        </member>
+        <member name="P:Sendly.SendlyClientOptions.Timeout">
+            <summary>
+            Request timeout. Defaults to 30 seconds.
+            </summary>
+        </member>
+        <member name="P:Sendly.SendlyClientOptions.MaxRetries">
+            <summary>
+            Maximum retry attempts. Defaults to 3.
+            </summary>
+        </member>
+        <member name="T:Sendly.Webhooks">
+             <summary>
+             Webhook utilities for verifying and parsing Sendly webhook events.
+             </summary>
+             <example>
+             <code>
+             // In your ASP.NET Core controller
+             [HttpPost("/webhooks/sendly")]
+             public IActionResult HandleWebhook(
+                 [FromBody] string payload,
+                 [FromHeader(Name = "X-Sendly-Signature")] string signature)
+             {
+                 try
+                 {
+                     var webhookEvent = Webhooks.ParseEvent(payload, signature, _webhookSecret);
+            
+                     switch (webhookEvent.Type)
+                     {
+                         case "message.delivered":
+                             Console.WriteLine($"Message delivered: {webhookEvent.Data.MessageId}");
+                             break;
+                         case "message.failed":
+                             Console.WriteLine($"Message failed: {webhookEvent.Data.Error}");
+                             break;
+                     }
+            
+                     return Ok();
+                 }
+                 catch (WebhookSignatureException)
+                 {
+                     return Unauthorized();
+                 }
+             }
+             </code>
+             </example>
+        </member>
+        <member name="M:Sendly.Webhooks.VerifySignature(System.String,System.String,System.String)">
+            <summary>
+            Verify webhook signature from Sendly.
+            </summary>
+            <param name="payload">Raw request body as string</param>
+            <param name="signature">X-Sendly-Signature header value</param>
+            <param name="secret">Your webhook secret from dashboard</param>
+            <returns>True if signature is valid, false otherwise</returns>
+        </member>
+        <member name="M:Sendly.Webhooks.ParseEvent(System.String,System.String,System.String)">
+            <summary>
+            Parse and validate a webhook event.
+            </summary>
+            <param name="payload">Raw request body as string</param>
+            <param name="signature">X-Sendly-Signature header value</param>
+            <param name="secret">Your webhook secret from dashboard</param>
+            <returns>Parsed and validated WebhookEvent</returns>
+            <exception cref="T:Sendly.WebhookSignatureException">If signature is invalid or payload is malformed</exception>
+        </member>
+        <member name="M:Sendly.Webhooks.GenerateSignature(System.String,System.String)">
+            <summary>
+            Generate a webhook signature for testing purposes.
+            </summary>
+            <param name="payload">The payload to sign</param>
+            <param name="secret">The secret to use for signing</param>
+            <returns>The signature in the format "sha256=..."</returns>
+        </member>
+        <member name="T:Sendly.WebhookEvent">
+            <summary>
+            Webhook event from Sendly.
+            </summary>
+        </member>
+        <member name="P:Sendly.WebhookEvent.Id">
+            <summary>Unique event ID</summary>
+        </member>
+        <member name="P:Sendly.WebhookEvent.Type">
+            <summary>Event type</summary>
+        </member>
+        <member name="P:Sendly.WebhookEvent.Data">
+            <summary>Event data</summary>
+        </member>
+        <member name="P:Sendly.WebhookEvent.CreatedAt">
+            <summary>When the event was created (ISO 8601)</summary>
+        </member>
+        <member name="P:Sendly.WebhookEvent.ApiVersion">
+            <summary>API version</summary>
+        </member>
+        <member name="T:Sendly.WebhookMessageData">
+            <summary>
+            Webhook message data.
+            </summary>
+        </member>
+        <member name="P:Sendly.WebhookMessageData.MessageId">
+            <summary>The message ID</summary>
+        </member>
+        <member name="P:Sendly.WebhookMessageData.Status">
+            <summary>Current message status</summary>
+        </member>
+        <member name="P:Sendly.WebhookMessageData.To">
+            <summary>Recipient phone number</summary>
+        </member>
+        <member name="P:Sendly.WebhookMessageData.From">
+            <summary>Sender ID or phone number</summary>
+        </member>
+        <member name="P:Sendly.WebhookMessageData.Error">
+            <summary>Error message if status is 'failed' or 'undelivered'</summary>
+        </member>
+        <member name="P:Sendly.WebhookMessageData.ErrorCode">
+            <summary>Error code if available</summary>
+        </member>
+        <member name="P:Sendly.WebhookMessageData.DeliveredAt">
+            <summary>When the message was delivered (ISO 8601)</summary>
+        </member>
+        <member name="P:Sendly.WebhookMessageData.FailedAt">
+            <summary>When the message failed (ISO 8601)</summary>
+        </member>
+        <member name="P:Sendly.WebhookMessageData.Segments">
+            <summary>Number of SMS segments</summary>
+        </member>
+        <member name="P:Sendly.WebhookMessageData.CreditsUsed">
+            <summary>Credits charged</summary>
+        </member>
+        <member name="T:Sendly.WebhookSignatureException">
+            <summary>
+            Exception thrown when webhook signature verification fails.
+            </summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.MyRegex_0">
+            <summary>Custom <see cref="T:System.Text.RegularExpressions.Regex"/>-derived type for the MyRegex method.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.MyRegex_0.Instance">
+            <summary>Cached, thread-safe singleton instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.MyRegex_0.#ctor">
+            <summary>Initializes the instance.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.MyRegex_0.RunnerFactory">
+            <summary>Provides a factory for creating <see cref="T:System.Text.RegularExpressions.RegexRunner"/> instances to be used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.MyRegex_0.RunnerFactory.CreateInstance">
+            <summary>Creates an instance of a <see cref="T:System.Text.RegularExpressions.RegexRunner"/> used by methods on <see cref="T:System.Text.RegularExpressions.Regex"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.MyRegex_0.RunnerFactory.Runner">
+            <summary>Provides the runner that contains the custom logic implementing the specified regular expression.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.MyRegex_0.RunnerFactory.Runner.Scan(System.ReadOnlySpan{System.Char})">
+            <summary>Scan the <paramref name="inputSpan"/> starting from base.runtextstart for the next match.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.MyRegex_0.RunnerFactory.Runner.TryFindNextPossibleStartingPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Search <paramref name="inputSpan"/> starting from base.runtextpos for the next location a match could possibly start.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if a possible match was found; false if no more matches are possible.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.Generated.MyRegex_0.RunnerFactory.Runner.TryMatchAtCurrentPosition(System.ReadOnlySpan{System.Char})">
+            <summary>Determine whether <paramref name="inputSpan"/> at base.runtextpos is a match for the regular expression.</summary>
+            <param name="inputSpan">The text being scanned by the regular expression.</param>
+            <returns>true if the regular expression matches at the current position; otherwise, false.</returns>
+        </member>
+        <member name="T:System.Text.RegularExpressions.Generated.Utilities">
+            <summary>Helper methods used by generated <see cref="T:System.Text.RegularExpressions.Regex"/>-derived implementations.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout">
+            <summary>Default timeout value set in <see cref="T:System.AppContext"/>, or <see cref="F:System.Text.RegularExpressions.Regex.InfiniteMatchTimeout"/> if none was set.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.Generated.Utilities.s_hasTimeout">
+            <summary>Whether <see cref="F:System.Text.RegularExpressions.Generated.Utilities.s_defaultTimeout"/> is non-infinite.</summary>
+        </member>
+    </members>
+</doc>

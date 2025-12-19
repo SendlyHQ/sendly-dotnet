@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>Sendly</id>
+    <version>1.1.0</version>
+    <authors>Sendly</authors>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <readme>README.md</readme>
+    <projectUrl>https://github.com/sendly-live/sendly-dotnet</projectUrl>
+    <description>Official .NET SDK for the Sendly SMS API</description>
+    <copyright>Copyright (c) Sendly</copyright>
+    <tags>sendly sms messaging api sdk</tags>
+    <repository type="git" url="https://github.com/sendly-live/sendly-dotnet" commit="fc7f7bac488331ad7062c810b459f96f81ab53bf" />
+    <dependencies>
+      <group targetFramework="net8.0">
+        <dependency id="System.Text.Json" version="8.0.5" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/bin/Release/net8.0/Sendly.dll" target="lib/net8.0/Sendly.dll" />
+    <file src="/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/src/Sendly/bin/Release/net8.0/Sendly.xml" target="lib/net8.0/Sendly.xml" />
+    <file src="/Users/sarang/Desktop/Sendly/packages/dotnet-sdk/README.md" target="/README.md" />
+  </files>
+</package>
