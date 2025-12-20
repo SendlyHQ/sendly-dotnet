@@ -15,7 +15,7 @@ public class BatchMessageResponse
     {
         public const string Processing = "processing";
         public const string Completed = "completed";
-        public const string PartiallyCompleted = "partially_completed";
+        public const string PartialFailure = "partial_failure";
         public const string Failed = "failed";
     }
 
@@ -86,7 +86,7 @@ public class BatchMessageResponse
     /// <summary>
     /// Whether the batch completed with some failures.
     /// </summary>
-    public bool IsPartiallyCompleted => Status == Statuses.PartiallyCompleted;
+    public bool IsPartialFailure => Status == Statuses.PartialFailure;
 
     /// <summary>
     /// Whether all messages in the batch failed.
