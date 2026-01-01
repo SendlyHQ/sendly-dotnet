@@ -126,6 +126,56 @@ Console.WriteLine(message.Status);
 Console.WriteLine(message.DeliveredAt);
 ```
 
+### Scheduling Messages
+
+```csharp
+// Schedule a message for future delivery
+var scheduled = await client.Messages.ScheduleAsync(new ScheduleMessageRequest(
+    "+15551234567",
+    "Your appointment is tomorrow!",
+    "2025-01-15T10:00:00Z"
+));
+
+Console.WriteLine(scheduled.Id);
+Console.WriteLine(scheduled.ScheduledAt);
+
+// List scheduled messages
+var result = await client.Messages.ListScheduledAsync();
+foreach (var msg in result)
+{
+    Console.WriteLine($"{msg.Id}: {msg.ScheduledAt}");
+}
+
+// Get a specific scheduled message
+var msg = await client.Messages.GetScheduledAsync("sched_xxx");
+
+// Cancel a scheduled message (refunds credits)
+var cancel = await client.Messages.CancelScheduledAsync("sched_xxx");
+Console.WriteLine($"Refunded: {cancel.CreditsRefunded} credits");
+```
+
+### Batch Messages
+
+```csharp
+// Send multiple messages in one API call (up to 1000)
+var batch = await client.Messages.SendBatchAsync(new SendBatchRequest()
+    .AddMessage("+15551234567", "Hello User 1!")
+    .AddMessage("+15559876543", "Hello User 2!")
+    .AddMessage("+15551112222", "Hello User 3!")
+);
+
+Console.WriteLine(batch.BatchId);
+Console.WriteLine($"Queued: {batch.Queued}");
+Console.WriteLine($"Failed: {batch.Failed}");
+Console.WriteLine($"Credits used: {batch.CreditsUsed}");
+
+// Get batch status
+var status = await client.Messages.GetBatchAsync("batch_xxx");
+
+// List all batches
+var batches = await client.Messages.ListBatchesAsync();
+```
+
 ### Iterate All Messages
 
 ```csharp
@@ -142,6 +192,70 @@ await foreach (var message in client.Messages.GetAllAsync(new ListMessagesOption
 }))
 {
     Console.WriteLine($"Delivered: {message.Id}");
+}
+```
+
+## Webhooks
+
+```csharp
+// Create a webhook endpoint
+var webhook = await client.Webhooks.CreateAsync(new CreateWebhookRequest
+{
+    Url = "https://example.com/webhooks/sendly",
+    Events = new[] { "message.delivered", "message.failed" }
+});
+
+Console.WriteLine(webhook.Id);
+Console.WriteLine(webhook.Secret); // Store securely!
+
+// List all webhooks
+var webhooks = await client.Webhooks.ListAsync();
+
+// Get a specific webhook
+var wh = await client.Webhooks.GetAsync("whk_xxx");
+
+// Update a webhook
+await client.Webhooks.UpdateAsync("whk_xxx", new UpdateWebhookRequest
+{
+    Url = "https://new-endpoint.example.com/webhook",
+    Events = new[] { "message.delivered", "message.failed", "message.sent" }
+});
+
+// Test a webhook
+var result = await client.Webhooks.TestAsync("whk_xxx");
+
+// Rotate webhook secret
+var rotation = await client.Webhooks.RotateSecretAsync("whk_xxx");
+
+// Delete a webhook
+await client.Webhooks.DeleteAsync("whk_xxx");
+```
+
+## Account & Credits
+
+```csharp
+// Get account information
+var account = await client.Account.GetAsync();
+Console.WriteLine(account.Email);
+
+// Check credit balance
+var credits = await client.Account.GetCreditsAsync();
+Console.WriteLine($"Available: {credits.AvailableBalance} credits");
+Console.WriteLine($"Reserved: {credits.ReservedBalance} credits");
+Console.WriteLine($"Total: {credits.Balance} credits");
+
+// View credit transaction history
+var transactions = await client.Account.GetCreditTransactionsAsync();
+foreach (var tx in transactions)
+{
+    Console.WriteLine($"{tx.Type}: {tx.Amount} credits - {tx.Description}");
+}
+
+// List API keys
+var keys = await client.Account.ListApiKeysAsync();
+foreach (var key in keys)
+{
+    Console.WriteLine($"{key.Name}: {key.Prefix}*** ({key.Type})");
 }
 ```
 
