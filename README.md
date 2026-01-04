@@ -1,3 +1,12 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/SendlyHQ/sendly-dotnet/main/.github/header.svg" alt="Sendly .NET SDK" />
+</p>
+
+<p align="center">
+  <a href="https://www.nuget.org/packages/Sendly"><img src="https://img.shields.io/nuget/v/Sendly.svg?style=flat-square" alt="NuGet" /></a>
+  <a href="https://github.com/SendlyHQ/sendly-dotnet/blob/main/LICENSE"><img src="https://img.shields.io/github/license/SendlyHQ/sendly-dotnet?style=flat-square" alt="license" /></a>
+</p>
+
 # Sendly .NET SDK
 
 Official .NET SDK for the Sendly SMS API.
