@@ -16,7 +16,7 @@ dotnet add package Sendly
 Install-Package Sendly
 
 # PackageReference (add to .csproj)
-<PackageReference Include="Sendly" Version="1.0.5" />
+<PackageReference Include="Sendly" Version="3.7.0" />
 ```
 
 ## Quick Start
@@ -174,6 +174,14 @@ var status = await client.Messages.GetBatchAsync("batch_xxx");
 
 // List all batches
 var batches = await client.Messages.ListBatchesAsync();
+
+// Preview batch (dry run) - validates without sending
+var preview = await client.Messages.PreviewBatchAsync(new SendBatchRequest()
+    .AddMessage("+15551234567", "Hello User 1!")
+    .AddMessage("+447700900123", "Hello UK!")
+);
+Console.WriteLine($"Total credits needed: {preview.TotalCredits}");
+Console.WriteLine($"Valid: {preview.Valid}, Invalid: {preview.Invalid}");
 ```
 
 ### Iterate All Messages
@@ -229,6 +237,13 @@ var rotation = await client.Webhooks.RotateSecretAsync("whk_xxx");
 
 // Delete a webhook
 await client.Webhooks.DeleteAsync("whk_xxx");
+
+// List available webhook event types
+var eventTypes = await client.Webhooks.ListEventTypesAsync();
+foreach (var eventType in eventTypes)
+{
+    Console.WriteLine($"Event: {eventType}");
+}
 ```
 
 ## Account & Credits
@@ -257,6 +272,25 @@ foreach (var key in keys)
 {
     Console.WriteLine($"{key.Name}: {key.Prefix}*** ({key.Type})");
 }
+
+// Get a specific API key
+var key = await client.Account.GetApiKeyAsync("key_xxx");
+
+// Get API key usage stats
+var usage = await client.Account.GetApiKeyUsageAsync("key_xxx");
+Console.WriteLine($"Messages sent: {usage.MessagesSent}");
+
+// Create a new API key
+var newKey = await client.Account.CreateApiKeyAsync(new CreateApiKeyRequest
+{
+    Name = "Production Key",
+    Type = "live",
+    Scopes = new[] { "sms:send", "sms:read" }
+});
+Console.WriteLine($"New key: {newKey.Key}"); // Only shown once!
+
+// Revoke an API key
+await client.Account.RevokeApiKeyAsync("key_xxx");
 ```
 
 ## Error Handling

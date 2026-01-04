@@ -384,6 +384,51 @@ public class CreateApiKeyOptions
 }
 
 /// <summary>
+/// Usage statistics for an API key.
+/// </summary>
+public class ApiKeyUsage
+{
+    /// <summary>
+    /// Total number of requests made with this key.
+    /// </summary>
+    [JsonPropertyName("totalRequests")]
+    public long TotalRequests { get; set; }
+
+    /// <summary>
+    /// Number of successful requests.
+    /// </summary>
+    [JsonPropertyName("successfulRequests")]
+    public long SuccessfulRequests { get; set; }
+
+    /// <summary>
+    /// Number of failed requests.
+    /// </summary>
+    [JsonPropertyName("failedRequests")]
+    public long FailedRequests { get; set; }
+
+    /// <summary>
+    /// Last request timestamp.
+    /// </summary>
+    [JsonPropertyName("lastRequestAt")]
+    public DateTime? LastRequestAt { get; set; }
+
+    /// <summary>
+    /// Credits used by this key.
+    /// </summary>
+    [JsonPropertyName("creditsUsed")]
+    public long CreditsUsed { get; set; }
+
+    /// <summary>
+    /// Creates an ApiKeyUsage from a JSON element.
+    /// </summary>
+    internal static ApiKeyUsage FromJson(JsonElement element, JsonSerializerOptions options)
+    {
+        return JsonSerializer.Deserialize<ApiKeyUsage>(element.GetRawText(), options)
+            ?? new ApiKeyUsage();
+    }
+}
+
+/// <summary>
 /// Account verification status.
 /// </summary>
 public class AccountVerification

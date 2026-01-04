@@ -74,7 +74,7 @@ public class AccountResource
     /// <returns>List of API keys</returns>
     public async Task<ApiKeyList> ListApiKeysAsync(CancellationToken cancellationToken = default)
     {
-        using var response = await _client.GetAsync("/account/api-keys", null, cancellationToken);
+        using var response = await _client.GetAsync("/account/keys", null, cancellationToken);
         return new ApiKeyList(response, _client.JsonOptions);
     }
 
@@ -104,8 +104,55 @@ public class AccountResource
         if (string.IsNullOrEmpty(options.Name))
             throw new ValidationException("API key name is required");
 
-        using var response = await _client.PostAsync("/account/api-keys", options, cancellationToken);
+        using var response = await _client.PostAsync("/account/keys", options, cancellationToken);
         return CreateApiKeyResponse.FromJson(response.RootElement, _client.JsonOptions);
+    }
+
+    /// <summary>
+    /// Gets a specific API key by ID.
+    /// </summary>
+    /// <param name="id">API key ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The API key</returns>
+    public async Task<ApiKey> GetApiKeyAsync(string id, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(id))
+            throw new ValidationException("API key ID is required");
+
+        using var response = await _client.GetAsync($"/account/keys/{Uri.EscapeDataString(id)}", null, cancellationToken);
+        var root = response.RootElement;
+
+        if (root.TryGetProperty("api_key", out var keyElement) ||
+            root.TryGetProperty("apiKey", out keyElement) ||
+            root.TryGetProperty("data", out keyElement))
+        {
+            return ApiKey.FromJson(keyElement, _client.JsonOptions);
+        }
+
+        return ApiKey.FromJson(root, _client.JsonOptions);
+    }
+
+    /// <summary>
+    /// Gets usage statistics for a specific API key.
+    /// </summary>
+    /// <param name="id">API key ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Usage statistics</returns>
+    public async Task<ApiKeyUsage> GetApiKeyUsageAsync(string id, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(id))
+            throw new ValidationException("API key ID is required");
+
+        using var response = await _client.GetAsync($"/account/keys/{Uri.EscapeDataString(id)}/usage", null, cancellationToken);
+        var root = response.RootElement;
+
+        if (root.TryGetProperty("usage", out var usageElement) ||
+            root.TryGetProperty("data", out usageElement))
+        {
+            return ApiKeyUsage.FromJson(usageElement, _client.JsonOptions);
+        }
+
+        return ApiKeyUsage.FromJson(root, _client.JsonOptions);
     }
 
     /// <summary>
@@ -118,6 +165,6 @@ public class AccountResource
         if (string.IsNullOrEmpty(id))
             throw new ValidationException("API key ID is required");
 
-        using var _ = await _client.DeleteAsync($"/account/api-keys/{Uri.EscapeDataString(id)}", cancellationToken);
+        using var _ = await _client.DeleteAsync($"/account/keys/{Uri.EscapeDataString(id)}", cancellationToken);
     }
 }

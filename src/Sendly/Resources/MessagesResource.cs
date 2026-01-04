@@ -273,6 +273,28 @@ public partial class MessagesResource
         return new BatchList(response, _client.JsonOptions);
     }
 
+    /// <summary>
+    /// Previews a batch without sending (dry run).
+    /// </summary>
+    /// <param name="request">Batch send request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Preview showing what would happen if batch was sent</returns>
+    public async Task<BatchPreviewResponse> PreviewBatchAsync(SendBatchRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request.Messages == null || request.Messages.Count == 0)
+            throw new ValidationException("At least one message is required");
+
+        // Validate all messages
+        foreach (var item in request.Messages)
+        {
+            ValidatePhone(item.To);
+            ValidateText(item.Text);
+        }
+
+        using var response = await _client.PostAsync("/messages/batch/preview", request, cancellationToken);
+        return BatchPreviewResponse.FromJson(response.RootElement, _client.JsonOptions);
+    }
+
     // ==================== Validation Helpers ====================
 
     private static void ValidatePhone(string phone)

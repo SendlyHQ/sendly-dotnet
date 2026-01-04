@@ -230,4 +230,29 @@ public class WebhooksResource
 
         return WebhookDelivery.FromJson(root, _client.JsonOptions);
     }
+
+    /// <summary>
+    /// Lists available webhook event types.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of event type strings</returns>
+    public async Task<List<string>> ListEventTypesAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await _client.GetAsync("/webhooks/event-types", null, cancellationToken);
+        var root = response.RootElement;
+        var eventTypes = new List<string>();
+
+        if (root.TryGetProperty("events", out var eventsElement) && eventsElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var eventElement in eventsElement.EnumerateArray())
+            {
+                if (eventElement.TryGetProperty("type", out var typeElement))
+                {
+                    eventTypes.Add(typeElement.GetString() ?? string.Empty);
+                }
+            }
+        }
+
+        return eventTypes;
+    }
 }
