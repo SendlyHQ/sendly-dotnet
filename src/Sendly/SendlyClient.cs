@@ -44,6 +44,16 @@ public class SendlyClient : IDisposable
     public AccountResource Account { get; }
 
     /// <summary>
+    /// Gets the Verify resource.
+    /// </summary>
+    public VerifyResource Verify { get; }
+
+    /// <summary>
+    /// Gets the Templates resource.
+    /// </summary>
+    public TemplatesResource Templates { get; }
+
+    /// <summary>
     /// Creates a new Sendly client.
     /// </summary>
     /// <param name="apiKey">Your Sendly API key</param>
@@ -78,6 +88,8 @@ public class SendlyClient : IDisposable
         Messages = new MessagesResource(this);
         Webhooks = new WebhooksResource(this);
         Account = new AccountResource(this);
+        Verify = new VerifyResource(this);
+        Templates = new TemplatesResource(this);
     }
 
     /// <summary>
