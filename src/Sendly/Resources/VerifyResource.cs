@@ -16,7 +16,15 @@ public class VerifyResource
         SendVerificationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync("/verify/send", request, cancellationToken);
+        var doc = await _client.PostAsync("/verify", request, cancellationToken);
+        return JsonSerializer.Deserialize<SendVerificationResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
+
+    public async Task<SendVerificationResponse> ResendAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+    {
+        var doc = await _client.PostAsync($"/verify/{id}/resend", new { }, cancellationToken);
         return JsonSerializer.Deserialize<SendVerificationResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
