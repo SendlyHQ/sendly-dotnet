@@ -3,13 +3,41 @@ using Sendly.Models;
 
 namespace Sendly.Resources;
 
+public class SessionsResource
+{
+    private readonly SendlyClient _client;
+
+    public SessionsResource(SendlyClient client)
+    {
+        _client = client;
+    }
+
+    public async Task<VerifySession> CreateAsync(
+        CreateSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var doc = await _client.PostAsync("/verify/sessions", request, cancellationToken);
+        return JsonSerializer.Deserialize<VerifySession>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
+
+    public async Task<ValidateSessionResponse> ValidateAsync(
+        ValidateSessionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var doc = await _client.PostAsync("/verify/sessions/validate", request, cancellationToken);
+        return JsonSerializer.Deserialize<ValidateSessionResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
+}
+
 public class VerifyResource
 {
     private readonly SendlyClient _client;
+    public SessionsResource Sessions { get; }
 
     public VerifyResource(SendlyClient client)
     {
         _client = client;
+        Sessions = new SessionsResource(client);
     }
 
     public async Task<SendVerificationResponse> SendAsync(
