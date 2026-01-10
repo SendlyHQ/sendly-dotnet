@@ -108,9 +108,10 @@ public class SendlyClient : IDisposable
     {
         var json = JsonSerializer.Serialize(body, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var normalizedPath = NormalizePath(path);
 
         return await ExecuteWithRetryAsync(
-            () => _httpClient.PostAsync(path, content, cancellationToken),
+            () => _httpClient.PostAsync(normalizedPath, content, cancellationToken),
             cancellationToken);
     }
 
@@ -121,9 +122,10 @@ public class SendlyClient : IDisposable
     {
         var json = JsonSerializer.Serialize(body, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var normalizedPath = NormalizePath(path);
 
         return await ExecuteWithRetryAsync(
-            () => _httpClient.PatchAsync(path, content, cancellationToken),
+            () => _httpClient.PatchAsync(normalizedPath, content, cancellationToken),
             cancellationToken);
     }
 
@@ -134,9 +136,10 @@ public class SendlyClient : IDisposable
     {
         var json = JsonSerializer.Serialize(body, _jsonOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var normalizedPath = NormalizePath(path);
 
         return await ExecuteWithRetryAsync(
-            () => _httpClient.PutAsync(path, content, cancellationToken),
+            () => _httpClient.PutAsync(normalizedPath, content, cancellationToken),
             cancellationToken);
     }
 
@@ -145,21 +148,29 @@ public class SendlyClient : IDisposable
     /// </summary>
     internal async Task<JsonDocument> DeleteAsync(string path, CancellationToken cancellationToken = default)
     {
+        var normalizedPath = NormalizePath(path);
         return await ExecuteWithRetryAsync(
-            () => _httpClient.DeleteAsync(path, cancellationToken),
+            () => _httpClient.DeleteAsync(normalizedPath, cancellationToken),
             cancellationToken);
+    }
+
+    private static string NormalizePath(string path)
+    {
+        return path.TrimStart('/');
     }
 
     private string BuildUrl(string path, Dictionary<string, string>? queryParams)
     {
+        var normalizedPath = NormalizePath(path);
+
         if (queryParams == null || queryParams.Count == 0)
-            return path;
+            return normalizedPath;
 
         var query = string.Join("&", queryParams
             .Where(kv => !string.IsNullOrEmpty(kv.Value))
             .Select(kv => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value)}"));
 
-        return string.IsNullOrEmpty(query) ? path : $"{path}?{query}";
+        return string.IsNullOrEmpty(query) ? normalizedPath : $"{normalizedPath}?{query}";
     }
 
     private async Task<JsonDocument> ExecuteWithRetryAsync(
