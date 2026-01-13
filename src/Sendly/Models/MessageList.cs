@@ -78,10 +78,10 @@ public class MessageList : IEnumerable<Message>
         }
         else
         {
-            Total = messages.Count;
-            Limit = 20;
-            Offset = 0;
-            HasMore = false;
+            Total = root.TryGetProperty("total", out var t) ? t.GetInt32() : messages.Count;
+            Limit = root.TryGetProperty("limit", out var l) ? l.GetInt32() : 20;
+            Offset = root.TryGetProperty("offset", out var o) ? o.GetInt32() : 0;
+            HasMore = root.TryGetProperty("has_more", out var h) && h.GetBoolean();
         }
     }
 

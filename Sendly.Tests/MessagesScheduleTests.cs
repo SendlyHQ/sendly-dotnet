@@ -236,20 +236,23 @@ public class MessagesScheduleTests : IDisposable
     [Fact]
     public async Task ScheduleAsync_With429Response_ThrowsRateLimitException()
     {
-        // Arrange
-        var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+        // Arrange - Queue multiple 429 responses for all retry attempts
+        for (int i = 0; i < 4; i++)
         {
-            Content = new StringContent(@"{""message"": ""Rate limit exceeded""}",
-                System.Text.Encoding.UTF8, "application/json")
-        };
-        response.Headers.Add("Retry-After", "30");
-        _mockHandler.QueueResponse(response);
+            var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+            {
+                Content = new StringContent(@"{""message"": ""Rate limit exceeded""}",
+                    System.Text.Encoding.UTF8, "application/json")
+            };
+            response.Headers.Add("Retry-After", "1");
+            _mockHandler.QueueResponse(response);
+        }
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<RateLimitException>(
             () => _client.Messages.ScheduleAsync("+15551234567", "Test", "2025-01-20T10:00:00Z"));
 
-        Assert.Equal(TimeSpan.FromSeconds(30), exception.RetryAfter);
+        Assert.Equal(TimeSpan.FromSeconds(1), exception.RetryAfter);
     }
 
     [Fact]
@@ -570,20 +573,23 @@ public class MessagesScheduleTests : IDisposable
     [Fact]
     public async Task CancelScheduledAsync_With429Response_ThrowsRateLimitException()
     {
-        // Arrange
-        var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+        // Arrange - Queue multiple 429 responses for all retry attempts
+        for (int i = 0; i < 4; i++)
         {
-            Content = new StringContent(@"{""message"": ""Rate limit exceeded""}",
-                System.Text.Encoding.UTF8, "application/json")
-        };
-        response.Headers.Add("Retry-After", "45");
-        _mockHandler.QueueResponse(response);
+            var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests)
+            {
+                Content = new StringContent(@"{""message"": ""Rate limit exceeded""}",
+                    System.Text.Encoding.UTF8, "application/json")
+            };
+            response.Headers.Add("Retry-After", "1");
+            _mockHandler.QueueResponse(response);
+        }
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<RateLimitException>(
             () => _client.Messages.CancelScheduledAsync("sched_123"));
 
-        Assert.Equal(TimeSpan.FromSeconds(45), exception.RetryAfter);
+        Assert.Equal(TimeSpan.FromSeconds(1), exception.RetryAfter);
     }
 
     [Fact]

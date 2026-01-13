@@ -60,7 +60,7 @@ public class SendlyClient : IDisposable
     /// <param name="options">Optional client configuration</param>
     public SendlyClient(string apiKey, SendlyClientOptions? options = null)
     {
-        if (string.IsNullOrEmpty(apiKey))
+        if (string.IsNullOrWhiteSpace(apiKey))
             throw new AuthenticationException("API key is required");
 
         _apiKey = apiKey;
