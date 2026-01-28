@@ -76,4 +76,21 @@ public class TemplatesResource
         var doc = await _client.PostAsync($"/verify/templates/{id}/unpublish", new { }, cancellationToken);
         return JsonSerializer.Deserialize<Template>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
+
+    public async Task<Template> CloneAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+    {
+        var doc = await _client.PostAsync($"/templates/{id}/clone", new { }, cancellationToken);
+        return JsonSerializer.Deserialize<Template>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
+
+    public async Task<Template> CloneAsync(
+        string id,
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        var doc = await _client.PostAsync($"/templates/{id}/clone", new { name }, cancellationToken);
+        return JsonSerializer.Deserialize<Template>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
 }
