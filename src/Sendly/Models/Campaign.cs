@@ -35,6 +35,9 @@ public class CampaignPreview
     public int RecipientCount { get; set; }
     public double EstimatedCredits { get; set; }
     public double EstimatedCost { get; set; }
+    public int? BlockedCount { get; set; }
+    public int? SendableCount { get; set; }
+    public List<string>? Warnings { get; set; }
 }
 
 public class CreateCampaignRequest
