@@ -64,6 +64,14 @@ public class ContactsResource
     {
         await _client.DeleteAsync($"/contacts/{id}", cancellationToken);
     }
+
+    public async Task<ImportContactsResponse> ImportAsync(
+        ImportContactsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var doc = await _client.PostAsync("/contacts/import", request, cancellationToken);
+        return JsonSerializer.Deserialize<ImportContactsResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
 }
 
 public class ContactListsResource

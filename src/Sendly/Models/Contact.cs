@@ -77,3 +77,33 @@ public class AddContactsRequest
 {
     public List<string> ContactIds { get; set; } = new();
 }
+
+public class ImportContactItem
+{
+    public string Phone { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? Email { get; set; }
+    public string? OptedInAt { get; set; }
+}
+
+public class ImportContactsRequest
+{
+    public List<ImportContactItem> Contacts { get; set; } = new();
+    public string? ListId { get; set; }
+    public string? OptedInAt { get; set; }
+}
+
+public class ImportContactsError
+{
+    public int Index { get; set; }
+    public string Phone { get; set; } = string.Empty;
+    public string Error { get; set; } = string.Empty;
+}
+
+public class ImportContactsResponse
+{
+    public int Imported { get; set; }
+    public int SkippedDuplicates { get; set; }
+    public List<ImportContactsError> Errors { get; set; } = new();
+    public int TotalErrors { get; set; }
+}
