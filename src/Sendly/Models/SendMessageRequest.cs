@@ -27,12 +27,20 @@ public class SendMessageRequest
     public string? MessageType { get; set; }
 
     /// <summary>
+    /// Custom metadata to attach to the message (max 4KB).
+    /// </summary>
+    [JsonPropertyName("metadata")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, object>? Metadata { get; set; }
+
+    /// <summary>
     /// Creates a new send message request.
     /// </summary>
-    public SendMessageRequest(string to, string text, string? messageType = null)
+    public SendMessageRequest(string to, string text, string? messageType = null, Dictionary<string, object>? metadata = null)
     {
         To = to;
         Text = text;
         MessageType = messageType;
+        Metadata = metadata;
     }
 }

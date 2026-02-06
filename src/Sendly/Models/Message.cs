@@ -148,6 +148,12 @@ public class Message
     public string? ErrorMessage { get; set; }
 
     /// <summary>
+    /// Custom metadata attached to the message.
+    /// </summary>
+    [JsonPropertyName("metadata")]
+    public Dictionary<string, object>? Metadata { get; set; }
+
+    /// <summary>
     /// Whether the message was delivered.
     /// </summary>
     public bool IsDelivered => Status == Statuses.Delivered;

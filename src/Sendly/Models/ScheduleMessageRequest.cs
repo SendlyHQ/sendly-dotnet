@@ -40,6 +40,13 @@ public class ScheduleMessageRequest
     public string? MessageType { get; set; }
 
     /// <summary>
+    /// Custom metadata to attach to the message (max 4KB).
+    /// </summary>
+    [JsonPropertyName("metadata")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, object>? Metadata { get; set; }
+
+    /// <summary>
     /// Creates a new schedule message request.
     /// </summary>
     /// <param name="to">Recipient phone number in E.164 format</param>
@@ -47,12 +54,14 @@ public class ScheduleMessageRequest
     /// <param name="scheduledAt">ISO 8601 datetime for delivery</param>
     /// <param name="from">Optional sender ID</param>
     /// <param name="messageType">Message type: "marketing" or "transactional"</param>
-    public ScheduleMessageRequest(string to, string text, string scheduledAt, string? from = null, string? messageType = null)
+    /// <param name="metadata">Custom metadata to attach (max 4KB)</param>
+    public ScheduleMessageRequest(string to, string text, string scheduledAt, string? from = null, string? messageType = null, Dictionary<string, object>? metadata = null)
     {
         To = to;
         Text = text;
         ScheduledAt = scheduledAt;
         From = from;
         MessageType = messageType;
+        Metadata = metadata;
     }
 }
