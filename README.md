@@ -94,6 +94,18 @@ var message = await client.Messages.SendAsync(new SendMessageRequest(
     "Your verification code is: 123456"
 ) { MessageType = "transactional" });
 
+// With custom metadata (max 4KB)
+var message = await client.Messages.SendAsync(new SendMessageRequest(
+    "+15551234567",
+    "Your order #12345 has shipped!"
+) { 
+    Metadata = new Dictionary<string, object> 
+    { 
+        { "order_id", "12345" }, 
+        { "customer_id", "cust_abc" } 
+    } 
+});
+
 Console.WriteLine(message.Id);
 Console.WriteLine(message.Status);
 Console.WriteLine(message.CreditsUsed);
