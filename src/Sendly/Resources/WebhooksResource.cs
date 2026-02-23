@@ -139,6 +139,20 @@ public class WebhooksResource
     }
 
     /// <summary>
+    /// Resets the circuit breaker for a webhook.
+    /// </summary>
+    /// <param name="id">Webhook ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Reset confirmation with updated webhook</returns>
+    public async Task<JsonDocument> ResetCircuitAsync(string id, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(id))
+            throw new ValidationException("Webhook ID is required");
+
+        return await _client.PostAsync<object>($"/webhooks/{Uri.EscapeDataString(id)}/reset-circuit", new { }, cancellationToken);
+    }
+
+    /// <summary>
     /// Rotates a webhook's secret.
     /// </summary>
     /// <param name="id">Webhook ID</param>
