@@ -17,6 +17,7 @@ public class Webhook
         public const string MessageDelivered = "message.delivered";
         public const string MessageFailed = "message.failed";
         public const string MessageBounced = "message.bounced";
+        public const string MessageRetrying = "message.retrying";
         public const string MessageReceived = "message.received";
     }
 

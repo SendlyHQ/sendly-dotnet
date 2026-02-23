@@ -17,6 +17,8 @@ public class Message
         public const string Sent = "sent";
         public const string Delivered = "delivered";
         public const string Failed = "failed";
+        public const string Bounced = "bounced";
+        public const string Retrying = "retrying";
     }
 
     /// <summary>
@@ -146,6 +148,12 @@ public class Message
     /// </summary>
     [JsonPropertyName("error_message")]
     public string? ErrorMessage { get; set; }
+
+    /// <summary>
+    /// Number of delivery retry attempts.
+    /// </summary>
+    [JsonPropertyName("retry_count")]
+    public int RetryCount { get; set; }
 
     /// <summary>
     /// Custom metadata attached to the message.
