@@ -67,6 +67,26 @@ public class AccountResource
         return new CreditTransactionList(response, _client.JsonOptions);
     }
 
+    public async Task<TransferCreditsResponse> TransferCreditsAsync(
+        string targetOrganizationId,
+        int amount,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(targetOrganizationId))
+            throw new ValidationException("Target organization ID is required");
+        if (amount <= 0)
+            throw new ValidationException("Amount must be a positive integer");
+
+        var options = new TransferCreditsOptions
+        {
+            TargetOrganizationId = targetOrganizationId,
+            Amount = amount
+        };
+
+        using var response = await _client.PostAsync("/credits/transfer", options, cancellationToken);
+        return TransferCreditsResponse.FromJson(response.RootElement, _client.JsonOptions);
+    }
+
     /// <summary>
     /// Lists API keys.
     /// </summary>

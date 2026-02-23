@@ -192,6 +192,36 @@ public class CreditTransactionList : IEnumerable<CreditTransaction>
     System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
+public class TransferCreditsOptions
+{
+    [JsonPropertyName("targetOrganizationId")]
+    public string TargetOrganizationId { get; set; } = string.Empty;
+
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; }
+}
+
+public class TransferCreditsResponse
+{
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; }
+
+    [JsonPropertyName("sourceBalance")]
+    public int SourceBalance { get; set; }
+
+    [JsonPropertyName("targetBalance")]
+    public int TargetBalance { get; set; }
+
+    internal static TransferCreditsResponse FromJson(JsonElement element, JsonSerializerOptions options)
+    {
+        return JsonSerializer.Deserialize<TransferCreditsResponse>(element.GetRawText(), options)
+            ?? new TransferCreditsResponse();
+    }
+}
+
 /// <summary>
 /// Options for listing transactions.
 /// </summary>
