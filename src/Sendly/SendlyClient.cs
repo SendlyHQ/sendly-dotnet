@@ -64,6 +64,11 @@ public class SendlyClient : IDisposable
     public ContactsResource Contacts { get; }
 
     /// <summary>
+    /// Gets the Media resource.
+    /// </summary>
+    public MediaResource Media { get; }
+
+    /// <summary>
     /// Creates a new Sendly client.
     /// </summary>
     /// <param name="apiKey">Your Sendly API key</param>
@@ -102,6 +107,7 @@ public class SendlyClient : IDisposable
         Templates = new TemplatesResource(this);
         Campaigns = new CampaignsResource(this);
         Contacts = new ContactsResource(this);
+        Media = new MediaResource(this);
     }
 
     /// <summary>
@@ -152,6 +158,17 @@ public class SendlyClient : IDisposable
 
         return await ExecuteWithRetryAsync(
             () => _httpClient.PutAsync(normalizedPath, content, cancellationToken),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Makes a POST request with raw HttpContent.
+    /// </summary>
+    internal async Task<JsonDocument> PostContentAsync(string path, HttpContent content, CancellationToken cancellationToken = default)
+    {
+        var normalizedPath = NormalizePath(path);
+        return await ExecuteWithRetryAsync(
+            () => _httpClient.PostAsync(normalizedPath, content, cancellationToken),
             cancellationToken);
     }
 

@@ -27,6 +27,13 @@ public class SendMessageRequest
     public string? MessageType { get; set; }
 
     /// <summary>
+    /// URLs of media files to attach (for MMS).
+    /// </summary>
+    [JsonPropertyName("mediaUrls")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? MediaUrls { get; set; }
+
+    /// <summary>
     /// Custom metadata to attach to the message (max 4KB).
     /// </summary>
     [JsonPropertyName("metadata")]
@@ -36,11 +43,12 @@ public class SendMessageRequest
     /// <summary>
     /// Creates a new send message request.
     /// </summary>
-    public SendMessageRequest(string to, string text, string? messageType = null, Dictionary<string, object>? metadata = null)
+    public SendMessageRequest(string to, string text, string? messageType = null, Dictionary<string, object>? metadata = null, List<string>? mediaUrls = null)
     {
         To = to;
         Text = text;
         MessageType = messageType;
         Metadata = metadata;
+        MediaUrls = mediaUrls;
     }
 }
