@@ -409,6 +409,81 @@ Use test API keys (`sk_test_v1_xxx`) with these test numbers:
 | +15005550004 | Fails: rate_limit_exceeded |
 | +15005550006 | Fails: carrier_violation |
 
+## Enterprise
+
+The Enterprise API lets you programmatically manage workspaces, verification, credits, and API keys for multi-tenant platforms. Requires an enterprise master key (`sk_live_v1_master_*`).
+
+### Quick Provision
+
+Create a fully configured workspace in a single call:
+
+```csharp
+var client = new SendlyClient("sk_live_v1_master_YOUR_KEY");
+
+var result = await client.Enterprise.ProvisionAsync(new ProvisionWorkspaceOptions
+{
+    Name = "Acme Insurance - Austin",
+    SourceWorkspaceId = "ws_verified",
+    CreditAmount = 5000,
+    CreditSourceWorkspaceId = "ws_pool",
+    KeyName = "Production",
+    KeyType = "live",
+    GenerateOptInPage = true
+});
+
+Console.WriteLine(result.Workspace.Id);
+Console.WriteLine(result.ApiKey?.RawKey);
+```
+
+Three provisioning modes:
+
+| Mode | Params | Description |
+|------|--------|-------------|
+| **Inherit** | `SourceWorkspaceId` | Shares toll-free number from verified workspace |
+| **Inherit + New Number** | `SourceWorkspaceId` + `InheritWithNewNumber = true` | Copies business info, purchases new number |
+| **Fresh** | `Verification = new VerificationData{...}` | Full business details, new number + carrier approval |
+
+### Workspace Management
+
+```csharp
+var ws = await client.Enterprise.Workspaces.CreateAsync("Acme Insurance");
+var list = await client.Enterprise.Workspaces.ListAsync();
+var detail = await client.Enterprise.Workspaces.GetAsync("ws_xxx");
+await client.Enterprise.Workspaces.DeleteAsync("ws_xxx");
+```
+
+### Credits & API Keys
+
+```csharp
+await client.Enterprise.Workspaces.TransferCreditsAsync("ws_dest", new TransferCreditsOptions
+{
+    SourceWorkspaceId = "ws_source",
+    Amount = 5000
+});
+
+var key = await client.Enterprise.Workspaces.CreateKeyAsync("ws_xxx", new CreateKeyOptions
+{
+    Name = "Production",
+    Type = "live"
+});
+Console.WriteLine(key.RawKey);
+
+await client.Enterprise.Workspaces.RevokeKeyAsync("ws_xxx", "key_abc");
+```
+
+### Webhooks & Analytics
+
+```csharp
+await client.Enterprise.Webhooks.SetAsync("https://yourapp.com/webhooks");
+var overview = await client.Enterprise.Analytics.OverviewAsync();
+var messages = await client.Enterprise.Analytics.MessagesAsync("30d");
+var delivery = await client.Enterprise.Analytics.DeliveryAsync();
+```
+
+Full enterprise docs: [sendly.live/docs/enterprise](https://sendly.live/docs/enterprise)
+
+---
+
 ## License
 
 MIT
