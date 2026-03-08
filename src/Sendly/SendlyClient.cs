@@ -85,6 +85,7 @@ public class SendlyClient : IDisposable
 
         _apiKey = apiKey;
         options ??= new SendlyClientOptions();
+        options.OrganizationId ??= Environment.GetEnvironmentVariable("SENDLY_ORG_ID");
         _maxRetries = options.MaxRetries;
 
         _httpClient = new HttpClient
@@ -98,6 +99,8 @@ public class SendlyClient : IDisposable
         _httpClient.DefaultRequestHeaders.Accept.Add(
             new MediaTypeWithQualityHeaderValue("application/json"));
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"sendly-dotnet/{Version}");
+        if (!string.IsNullOrEmpty(options.OrganizationId))
+            _httpClient.DefaultRequestHeaders.Add("X-Organization-Id", options.OrganizationId);
 
         _jsonOptions = new JsonSerializerOptions
         {
@@ -315,6 +318,13 @@ public class SendlyClient : IDisposable
     /// </summary>
     internal JsonSerializerOptions JsonOptions => _jsonOptions;
 
+    public void SetOrganizationId(string organizationId)
+    {
+        _httpClient.DefaultRequestHeaders.Remove("X-Organization-Id");
+        if (!string.IsNullOrEmpty(organizationId))
+            _httpClient.DefaultRequestHeaders.Add("X-Organization-Id", organizationId);
+    }
+
     /// <summary>
     /// Disposes the client.
     /// </summary>
@@ -359,4 +369,6 @@ public class SendlyClientOptions
     /// Maximum retry attempts. Defaults to 3.
     /// </summary>
     public int MaxRetries { get; set; } = 3;
+
+    public string? OrganizationId { get; set; }
 }
