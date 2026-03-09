@@ -9,7 +9,7 @@
 
 # Sendly .NET SDK
 
-Official .NET SDK for the Sendly SMS API.
+Official .NET SDK for the Sendly SMS & MMS API.
 
 ## Requirements
 
