@@ -425,14 +425,14 @@ var result = await client.Enterprise.ProvisionAsync(new ProvisionWorkspaceOption
     Name = "Acme Insurance - Austin",
     SourceWorkspaceId = "ws_verified",
     CreditAmount = 5000,
-    CreditSourceWorkspaceId = "ws_pool",
+    CreditSourceWorkspaceId = "SOURCE_WORKSPACE_ID",
     KeyName = "Production",
     KeyType = "live",
     GenerateOptInPage = true
 });
 
 Console.WriteLine(result.Workspace.Id);
-Console.WriteLine(result.ApiKey?.RawKey);
+Console.WriteLine(result.Key?.Key);
 ```
 
 Three provisioning modes:
@@ -466,7 +466,7 @@ var key = await client.Enterprise.Workspaces.CreateKeyAsync("ws_xxx", new Create
     Name = "Production",
     Type = "live"
 });
-Console.WriteLine(key.RawKey);
+Console.WriteLine(key.Key);
 
 await client.Enterprise.Workspaces.RevokeKeyAsync("ws_xxx", "key_abc");
 ```
