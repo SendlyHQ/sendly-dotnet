@@ -1167,6 +1167,33 @@ public class UpdateQuotaOptions
     public int? MonthlyMessageQuota { get; set; }
 }
 
+public class PoolCredits
+{
+    [JsonPropertyName("balance")]
+    public int Balance { get; set; }
+
+    [JsonPropertyName("lifetimeCredits")]
+    public int LifetimeCredits { get; set; }
+
+    [JsonPropertyName("reservedBalance")]
+    public int ReservedBalance { get; set; }
+
+    internal static PoolCredits FromJson(JsonElement element, JsonSerializerOptions options)
+    {
+        return JsonSerializer.Deserialize<PoolCredits>(element.GetRawText(), options)
+            ?? new PoolCredits();
+    }
+}
+
+public class DepositCreditsOptions
+{
+    [JsonPropertyName("amount")]
+    public int Amount { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+}
+
 public class AutoTopUpSettings
 {
     [JsonPropertyName("enabled")]

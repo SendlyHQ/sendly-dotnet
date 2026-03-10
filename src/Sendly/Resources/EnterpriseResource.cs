@@ -687,6 +687,36 @@ public class EnterpriseBillingResource
     }
 }
 
+public class EnterpriseCreditsResource
+{
+    private readonly SendlyClient _client;
+
+    internal EnterpriseCreditsResource(SendlyClient client)
+    {
+        _client = client;
+    }
+
+    public async Task<PoolCredits> GetAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _client.GetAsync("/enterprise/credits/pool", null, cancellationToken);
+        return PoolCredits.FromJson(response.RootElement, _client.JsonOptions);
+    }
+
+    public async Task<PoolCredits> DepositAsync(
+        int amount,
+        string? description = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (amount <= 0)
+            throw new ValidationException("Amount must be a positive integer");
+
+        var options = new DepositCreditsOptions { Amount = amount, Description = description };
+        using var response = await _client.PostAsync("/enterprise/credits/pool/deposit", options, cancellationToken);
+        return PoolCredits.FromJson(response.RootElement, _client.JsonOptions);
+    }
+}
+
 public class EnterpriseResource
 {
     private readonly SendlyClient _client;
@@ -696,6 +726,7 @@ public class EnterpriseResource
     public EnterpriseAnalyticsResource Analytics { get; }
     public EnterpriseSettingsResource Settings { get; }
     public EnterpriseBillingResource Billing { get; }
+    public EnterpriseCreditsResource Credits { get; }
 
     internal EnterpriseResource(SendlyClient client)
     {
@@ -705,6 +736,7 @@ public class EnterpriseResource
         Analytics = new EnterpriseAnalyticsResource(client);
         Settings = new EnterpriseSettingsResource(client);
         Billing = new EnterpriseBillingResource(client);
+        Credits = new EnterpriseCreditsResource(client);
     }
 
     public async Task<EnterpriseAccount> GetAccountAsync(
