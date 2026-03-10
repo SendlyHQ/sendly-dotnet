@@ -699,7 +699,7 @@ public class EnterpriseCreditsResource
     public async Task<PoolCredits> GetAsync(
         CancellationToken cancellationToken = default)
     {
-        using var response = await _client.GetAsync("/enterprise/credits/pool", null, cancellationToken);
+        using var response = await _client.GetAsync("/enterprise/credits", null, cancellationToken);
         return PoolCredits.FromJson(response.RootElement, _client.JsonOptions);
     }
 
@@ -712,7 +712,7 @@ public class EnterpriseCreditsResource
             throw new ValidationException("Amount must be a positive integer");
 
         var options = new DepositCreditsOptions { Amount = amount, Description = description };
-        using var response = await _client.PostAsync("/enterprise/credits/pool/deposit", options, cancellationToken);
+        using var response = await _client.PostAsync("/enterprise/credits/deposit", options, cancellationToken);
         return PoolCredits.FromJson(response.RootElement, _client.JsonOptions);
     }
 }
