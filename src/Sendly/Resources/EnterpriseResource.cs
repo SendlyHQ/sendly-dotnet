@@ -580,6 +580,13 @@ public class EnterpriseWebhooksResource
         using var response = await _client.PostAsync<object>("/enterprise/webhooks/test", new { }, cancellationToken);
         return EnterpriseWebhookTestResult.FromJson(response.RootElement, _client.JsonOptions);
     }
+
+    public async Task<EnterpriseWebhookSecretRotation> RotateSecretAsync(
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _client.PostAsync<object>("/enterprise/webhooks/rotate-secret", new { }, cancellationToken);
+        return EnterpriseWebhookSecretRotation.FromJson(response.RootElement, _client.JsonOptions);
+    }
 }
 
 public class EnterpriseAnalyticsResource

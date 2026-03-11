@@ -618,6 +618,21 @@ public class EnterpriseWebhookTestResult
     }
 }
 
+public class EnterpriseWebhookSecretRotation
+{
+    [JsonPropertyName("secret")]
+    public string Secret { get; set; } = string.Empty;
+
+    [JsonPropertyName("rotatedAt")]
+    public string? RotatedAt { get; set; }
+
+    internal static EnterpriseWebhookSecretRotation FromJson(JsonElement element, JsonSerializerOptions options)
+    {
+        return JsonSerializer.Deserialize<EnterpriseWebhookSecretRotation>(element.GetRawText(), options)
+            ?? new EnterpriseWebhookSecretRotation();
+    }
+}
+
 public class EnterpriseAnalyticsOverview
 {
     [JsonPropertyName("totalMessages")]
