@@ -307,6 +307,63 @@ public class WebhookMessageData
     /// <summary>Message format (sms or mms)</summary>
     [JsonPropertyName("message_format")]
     public string? MessageFormat { get; set; }
+
+    [JsonPropertyName("created_at")]
+    public string? CreatedAt { get; set; }
+
+    [JsonPropertyName("retry_count")]
+    public int RetryCount { get; set; }
+
+    [JsonPropertyName("metadata")]
+    public Dictionary<string, object>? Metadata { get; set; }
+
+    [JsonPropertyName("media_urls")]
+    public string[]? MediaUrls { get; set; }
+}
+
+public class WebhookVerificationData
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = "";
+
+    [JsonPropertyName("organization_id")]
+    public string? OrganizationId { get; set; }
+
+    [JsonPropertyName("phone")]
+    public string Phone { get; set; } = "";
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = "";
+
+    [JsonPropertyName("delivery_status")]
+    public string DeliveryStatus { get; set; } = "queued";
+
+    [JsonPropertyName("attempts")]
+    public int Attempts { get; set; }
+
+    [JsonPropertyName("max_attempts")]
+    public int MaxAttempts { get; set; } = 3;
+
+    [JsonPropertyName("expires_at")]
+    public JsonElement? ExpiresAt { get; set; }
+
+    [JsonPropertyName("verified_at")]
+    public JsonElement? VerifiedAt { get; set; }
+
+    [JsonPropertyName("created_at")]
+    public JsonElement? CreatedAt { get; set; }
+
+    [JsonPropertyName("app_name")]
+    public string? AppName { get; set; }
+
+    [JsonPropertyName("template_id")]
+    public string? TemplateId { get; set; }
+
+    [JsonPropertyName("profile_id")]
+    public string? ProfileId { get; set; }
+
+    [JsonPropertyName("metadata")]
+    public Dictionary<string, object>? Metadata { get; set; }
 }
 
 /// <summary>
