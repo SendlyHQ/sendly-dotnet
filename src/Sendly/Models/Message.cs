@@ -102,7 +102,7 @@ public class Message
     public string? SenderType { get; set; }
 
     /// <summary>
-    /// Telnyx message ID for carrier tracking.
+    /// Carrier message ID for tracking.
     /// </summary>
     [JsonPropertyName("telnyx_message_id")]
     public string? TelnyxMessageId { get; set; }
@@ -162,6 +162,12 @@ public class Message
     public Dictionary<string, object>? Metadata { get; set; }
 
     /// <summary>
+    /// AI classification metadata for inbound messages.
+    /// </summary>
+    [JsonPropertyName("aiMetadata")]
+    public AiMetadata? AiMetadata { get; set; }
+
+    /// <summary>
     /// Whether the message was delivered.
     /// </summary>
     public bool IsDelivered => Status == Statuses.Delivered;
@@ -184,4 +190,28 @@ public class Message
         return JsonSerializer.Deserialize<Message>(element.GetRawText(), options)
             ?? new Message();
     }
+}
+
+/// <summary>
+/// AI classification metadata for inbound messages.
+/// </summary>
+public class AiMetadata
+{
+    [JsonPropertyName("intent")]
+    public string? Intent { get; set; }
+
+    [JsonPropertyName("intentConfidence")]
+    public double? IntentConfidence { get; set; }
+
+    [JsonPropertyName("sentiment")]
+    public string? Sentiment { get; set; }
+
+    [JsonPropertyName("sentimentConfidence")]
+    public double? SentimentConfidence { get; set; }
+
+    [JsonPropertyName("classifiedAt")]
+    public string? ClassifiedAt { get; set; }
+
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
 }
