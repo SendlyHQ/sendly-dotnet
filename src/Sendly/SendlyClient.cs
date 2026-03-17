@@ -79,6 +79,16 @@ public class SendlyClient : IDisposable
     public ConversationsResource Conversations { get; }
 
     /// <summary>
+    /// Gets the Labels resource.
+    /// </summary>
+    public LabelsResource Labels { get; }
+
+    /// <summary>
+    /// Gets the Drafts resource.
+    /// </summary>
+    public DraftsResource Drafts { get; }
+
+    /// <summary>
     /// Creates a new Sendly client.
     /// </summary>
     /// <param name="apiKey">Your Sendly API key</param>
@@ -123,6 +133,8 @@ public class SendlyClient : IDisposable
         Media = new MediaResource(this);
         Enterprise = new EnterpriseResource(this);
         Conversations = new ConversationsResource(this);
+        Labels = new LabelsResource(this);
+        Drafts = new DraftsResource(this);
     }
 
     /// <summary>

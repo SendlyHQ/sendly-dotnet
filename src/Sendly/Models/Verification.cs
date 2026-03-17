@@ -63,12 +63,6 @@ public class VerificationListResponse
     public PaginationInfo? Pagination { get; set; }
 }
 
-public class PaginationInfo
-{
-    public int Limit { get; set; }
-    public bool HasMore { get; set; }
-}
-
 public class CreateSessionRequest
 {
     public string SuccessUrl { get; set; } = string.Empty;

@@ -139,4 +139,46 @@ public class ConversationsResource
         using var doc = await _client.PostAsync($"/conversations/{Uri.EscapeDataString(id)}/mark-read", new { }, cancellationToken);
         return JsonSerializer.Deserialize<Conversation>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
+
+    /// <summary>
+    /// Adds labels to a conversation.
+    /// </summary>
+    /// <param name="id">Conversation ID</param>
+    /// <param name="request">Add labels request containing label IDs</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The updated label list</returns>
+    public async Task<LabelListResponse> AddLabelsAsync(
+        string id,
+        AddLabelsRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(id))
+            throw new ValidationException("Conversation ID is required");
+
+        if (request.LabelIds == null || request.LabelIds.Count == 0)
+            throw new ValidationException("Label IDs are required");
+
+        using var doc = await _client.PostAsync($"/conversations/{Uri.EscapeDataString(id)}/labels", request, cancellationToken);
+        return JsonSerializer.Deserialize<LabelListResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
+
+    /// <summary>
+    /// Removes a label from a conversation.
+    /// </summary>
+    /// <param name="id">Conversation ID</param>
+    /// <param name="labelId">Label ID to remove</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    public async Task RemoveLabelAsync(
+        string id,
+        string labelId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(id))
+            throw new ValidationException("Conversation ID is required");
+
+        if (string.IsNullOrEmpty(labelId))
+            throw new ValidationException("Label ID is required");
+
+        using var doc = await _client.DeleteAsync($"/conversations/{Uri.EscapeDataString(id)}/labels/{Uri.EscapeDataString(labelId)}", cancellationToken);
+    }
 }
