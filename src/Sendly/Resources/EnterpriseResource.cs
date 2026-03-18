@@ -763,4 +763,15 @@ public class EnterpriseResource
         using var response = await _client.PostAsync("/enterprise/workspaces/provision", options, cancellationToken);
         return ProvisionWorkspaceResponse.FromJson(response.RootElement, _client.JsonOptions);
     }
+
+    public async Task<GenerateBusinessPageResponse> GenerateBusinessPageAsync(
+        GenerateBusinessPageOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(options.BusinessName))
+            throw new ValidationException("Business name is required");
+
+        using var response = await _client.PostAsync("/verification/business-page/generate", options, cancellationToken);
+        return GenerateBusinessPageResponse.FromJson(response.RootElement, _client.JsonOptions);
+    }
 }

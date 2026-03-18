@@ -1334,3 +1334,45 @@ public class BillingBreakdownOptions
         return result;
     }
 }
+
+public class GenerateBusinessPageOptions
+{
+    [JsonPropertyName("businessName")]
+    public string BusinessName { get; set; } = string.Empty;
+
+    [JsonPropertyName("useCase")]
+    public string? UseCase { get; set; }
+
+    [JsonPropertyName("useCaseSummary")]
+    public string? UseCaseSummary { get; set; }
+
+    [JsonPropertyName("contactEmail")]
+    public string? ContactEmail { get; set; }
+
+    [JsonPropertyName("contactPhone")]
+    public string? ContactPhone { get; set; }
+
+    [JsonPropertyName("businessAddress")]
+    public string? BusinessAddress { get; set; }
+
+    [JsonPropertyName("socialUrl")]
+    public string? SocialUrl { get; set; }
+}
+
+public class GenerateBusinessPageResponse
+{
+    [JsonPropertyName("slug")]
+    public string Slug { get; set; } = string.Empty;
+
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = string.Empty;
+
+    [JsonPropertyName("pageId")]
+    public string PageId { get; set; } = string.Empty;
+
+    internal static GenerateBusinessPageResponse FromJson(JsonElement element, JsonSerializerOptions options)
+    {
+        return JsonSerializer.Deserialize<GenerateBusinessPageResponse>(element.GetRawText(), options)
+            ?? new GenerateBusinessPageResponse();
+    }
+}
