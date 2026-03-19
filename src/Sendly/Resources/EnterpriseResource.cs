@@ -771,7 +771,7 @@ public class EnterpriseResource
         if (string.IsNullOrEmpty(options.BusinessName))
             throw new ValidationException("Business name is required");
 
-        using var response = await _client.PostAsync("/verification/business-page/generate", options, cancellationToken);
+        using var response = await _client.PostAsync("/enterprise/business-page/generate", options, cancellationToken);
         return GenerateBusinessPageResponse.FromJson(response.RootElement, _client.JsonOptions);
     }
 }
