@@ -1376,3 +1376,18 @@ public class GenerateBusinessPageResponse
             ?? new GenerateBusinessPageResponse();
     }
 }
+
+public class VerificationDocumentUploadResponse
+{
+    [JsonPropertyName("url")]
+    public string Url { get; set; } = string.Empty;
+
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    internal static VerificationDocumentUploadResponse FromJson(JsonElement element, JsonSerializerOptions options)
+    {
+        return JsonSerializer.Deserialize<VerificationDocumentUploadResponse>(element.GetRawText(), options)
+            ?? new VerificationDocumentUploadResponse();
+    }
+}

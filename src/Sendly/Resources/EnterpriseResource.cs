@@ -774,4 +774,60 @@ public class EnterpriseResource
         using var response = await _client.PostAsync("/enterprise/business-page/generate", options, cancellationToken);
         return GenerateBusinessPageResponse.FromJson(response.RootElement, _client.JsonOptions);
     }
+
+    public async Task<VerificationDocumentUploadResponse> UploadVerificationDocumentAsync(
+        string filePath,
+        string? workspaceId = null,
+        string? verificationId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(filePath))
+            throw new ValidationException("File path is required");
+
+        if (!File.Exists(filePath))
+            throw new ValidationException($"File not found: {filePath}");
+
+        var fileName = Path.GetFileName(filePath);
+        var contentType = Path.GetExtension(filePath)?.ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".pdf" => "application/pdf",
+            ".webp" => "image/webp",
+            _ => "application/octet-stream"
+        };
+
+        using var stream = File.OpenRead(filePath);
+        return await UploadVerificationDocumentAsync(stream, fileName, contentType, workspaceId, verificationId, cancellationToken);
+    }
+
+    public async Task<VerificationDocumentUploadResponse> UploadVerificationDocumentAsync(
+        Stream stream,
+        string fileName,
+        string contentType,
+        string? workspaceId = null,
+        string? verificationId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (stream == null)
+            throw new ValidationException("Stream is required");
+
+        if (string.IsNullOrEmpty(fileName))
+            throw new ValidationException("File name is required");
+
+        using var content = new MultipartFormDataContent();
+        var streamContent = new StreamContent(stream);
+        streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        content.Add(streamContent, "file", fileName);
+
+        if (!string.IsNullOrEmpty(workspaceId))
+            content.Add(new StringContent(workspaceId), "workspaceId");
+
+        if (!string.IsNullOrEmpty(verificationId))
+            content.Add(new StringContent(verificationId), "verificationId");
+
+        using var response = await _client.PostContentAsync("/enterprise/verification-document/upload", content, cancellationToken);
+        return VerificationDocumentUploadResponse.FromJson(response.RootElement, _client.JsonOptions);
+    }
 }
