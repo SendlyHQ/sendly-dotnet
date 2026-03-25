@@ -51,3 +51,17 @@ public class DeleteTemplateResponse
     public bool Success { get; set; }
     public string? Message { get; set; }
 }
+
+public class GenerateTemplateRequest
+{
+    public string Description { get; set; } = string.Empty;
+    public string? Category { get; set; }
+}
+
+public class GeneratedTemplateResponse
+{
+    public string Name { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+    public List<string> Variables { get; set; } = new();
+    public string Category { get; set; } = string.Empty;
+}

@@ -89,6 +89,11 @@ public class SendlyClient : IDisposable
     public DraftsResource Drafts { get; }
 
     /// <summary>
+    /// Gets the Rules resource.
+    /// </summary>
+    public RulesResource Rules { get; }
+
+    /// <summary>
     /// Creates a new Sendly client.
     /// </summary>
     /// <param name="apiKey">Your Sendly API key</param>
@@ -135,6 +140,7 @@ public class SendlyClient : IDisposable
         Conversations = new ConversationsResource(this);
         Labels = new LabelsResource(this);
         Drafts = new DraftsResource(this);
+        Rules = new RulesResource(this);
     }
 
     /// <summary>

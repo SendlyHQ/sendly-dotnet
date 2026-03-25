@@ -93,4 +93,15 @@ public class TemplatesResource
         var doc = await _client.PostAsync($"/templates/{id}/clone", new { name }, cancellationToken);
         return JsonSerializer.Deserialize<Template>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
+
+    public async Task<GeneratedTemplateResponse> GenerateAsync(
+        GenerateTemplateRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(request.Description))
+            throw new Sendly.Exceptions.ValidationException("Description is required");
+
+        var doc = await _client.PostAsync("/templates/generate", request, cancellationToken);
+        return JsonSerializer.Deserialize<GeneratedTemplateResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
 }

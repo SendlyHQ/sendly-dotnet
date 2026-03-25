@@ -107,3 +107,26 @@ public class ReplyToConversationRequest
     public Dictionary<string, object>? Metadata { get; set; }
     public List<string>? MediaUrls { get; set; }
 }
+
+public class ConversationContextResponse
+{
+    public string Context { get; set; } = string.Empty;
+    public ConversationContextInfo Conversation { get; set; } = new();
+    public int TokenEstimate { get; set; }
+    public ConversationContextBusiness? Business { get; set; }
+}
+
+public class ConversationContextInfo
+{
+    public string Id { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public int MessageCount { get; set; }
+    public int UnreadCount { get; set; }
+}
+
+public class ConversationContextBusiness
+{
+    public string? Name { get; set; }
+    public string? UseCase { get; set; }
+}

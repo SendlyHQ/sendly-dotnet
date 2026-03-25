@@ -181,4 +181,27 @@ public class ConversationsResource
 
         using var doc = await _client.DeleteAsync($"/conversations/{Uri.EscapeDataString(id)}/labels/{Uri.EscapeDataString(labelId)}", cancellationToken);
     }
+
+    /// <summary>
+    /// Gets conversation context for AI/LLM consumption.
+    /// </summary>
+    /// <param name="id">Conversation ID</param>
+    /// <param name="maxMessages">Optional maximum number of messages to include</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The conversation context</returns>
+    public async Task<ConversationContextResponse> GetContextAsync(
+        string id,
+        int? maxMessages = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(id))
+            throw new ValidationException("Conversation ID is required");
+
+        var queryParams = new Dictionary<string, string>();
+        if (maxMessages.HasValue)
+            queryParams["max_messages"] = maxMessages.Value.ToString();
+
+        using var doc = await _client.GetAsync($"/conversations/{Uri.EscapeDataString(id)}/context", queryParams.Count > 0 ? queryParams : null, cancellationToken);
+        return JsonSerializer.Deserialize<ConversationContextResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
 }
