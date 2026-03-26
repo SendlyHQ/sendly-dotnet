@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Sendly.Exceptions;
 using Sendly.Models;
 
 namespace Sendly.Resources;
@@ -99,7 +100,7 @@ public class TemplatesResource
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(request.Description))
-            throw new Sendly.Exceptions.ValidationException("Description is required");
+            throw new ValidationException("Description is required");
 
         var doc = await _client.PostAsync("/templates/generate", request, cancellationToken);
         return JsonSerializer.Deserialize<GeneratedTemplateResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
