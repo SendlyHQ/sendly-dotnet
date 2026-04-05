@@ -33,14 +33,26 @@ public class BatchMessageResult
     public string? Error { get; set; }
 
     /// <summary>
-    /// Whether this message was queued successfully.
+    /// When the message was created.
     /// </summary>
-    public bool IsSuccess => Status == "queued";
+    [JsonPropertyName("createdAt")]
+    public string? CreatedAt { get; set; }
+
+    /// <summary>
+    /// When the message was delivered (if applicable).
+    /// </summary>
+    [JsonPropertyName("deliveredAt")]
+    public string? DeliveredAt { get; set; }
+
+    /// <summary>
+    /// Whether this message was successful.
+    /// </summary>
+    public bool IsSuccess => Status == "queued" || Status == "sent" || Status == "delivered";
 
     /// <summary>
     /// Whether this message failed.
     /// </summary>
-    public bool IsFailed => Status == "failed";
+    public bool IsFailed => Status == "failed" || Status == "bounced";
 
     /// <summary>
     /// Creates a BatchMessageResult from a JSON element.

@@ -145,7 +145,8 @@ public static class Webhooks
                 FailedAt = GetStringOrDefault(msgElement, "failed_at", null),
                 Segments = GetIntOrDefault(msgElement, "segments", 1),
                 CreditsUsed = GetIntOrDefault(msgElement, "credits_used", 0),
-                MessageFormat = GetStringOrDefault(msgElement, "message_format", null)
+                MessageFormat = GetStringOrDefault(msgElement, "message_format", null),
+                BatchId = GetStringOrDefault(msgElement, "batch_id", null)
             };
 
             var webhookEvent = new WebhookEvent
@@ -319,6 +320,10 @@ public class WebhookMessageData
 
     [JsonPropertyName("media_urls")]
     public string[]? MediaUrls { get; set; }
+
+    /// <summary>Batch ID if message was sent as part of a batch</summary>
+    [JsonPropertyName("batch_id")]
+    public string? BatchId { get; set; }
 }
 
 public class WebhookVerificationData
