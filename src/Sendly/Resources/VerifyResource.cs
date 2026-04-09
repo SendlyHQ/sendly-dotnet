@@ -82,8 +82,6 @@ public class VerifyResource
             queryParams["limit"] = options.Limit.Value.ToString();
         if (!string.IsNullOrEmpty(options?.Status))
             queryParams["status"] = options.Status;
-        if (!string.IsNullOrEmpty(options?.Phone))
-            queryParams["phone"] = options.Phone;
 
         var doc = await _client.GetAsync("/verify", queryParams, cancellationToken);
         return JsonSerializer.Deserialize<VerificationListResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;

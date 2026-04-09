@@ -8,7 +8,6 @@ public class Verification
     public string DeliveryStatus { get; set; } = string.Empty;
     public int Attempts { get; set; }
     public int MaxAttempts { get; set; } = 3;
-    public string Channel { get; set; } = "sms";
     public string ExpiresAt { get; set; } = string.Empty;
     public string? VerifiedAt { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
@@ -16,7 +15,6 @@ public class Verification
     public string? AppName { get; set; }
     public string? TemplateId { get; set; }
     public string? ProfileId { get; set; }
-    public Dictionary<string, object>? Metadata { get; set; }
 
     public bool IsPending => Status == "pending";
     public bool IsVerified => Status == "verified";
@@ -25,36 +23,40 @@ public class Verification
 
 public class SendVerificationRequest
 {
-    public string Phone { get; set; } = string.Empty;
-    public string? Channel { get; set; }
-    public int? CodeLength { get; set; }
-    public int? ExpiresIn { get; set; }
-    public int? MaxAttempts { get; set; }
+    public string To { get; set; } = string.Empty;
     public string? TemplateId { get; set; }
     public string? ProfileId { get; set; }
     public string? AppName { get; set; }
-    public string? Locale { get; set; }
-    public Dictionary<string, object>? Metadata { get; set; }
+    public int? TimeoutSecs { get; set; }
+    public int? CodeLength { get; set; }
 }
 
 public class SendVerificationResponse
 {
-    public Verification Verification { get; set; } = new();
-    public string? Code { get; set; }
+    public string Id { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string ExpiresAt { get; set; } = string.Empty;
+    public bool Sandbox { get; set; }
+    public string? SandboxCode { get; set; }
+    public string? Message { get; set; }
 }
 
 public class CheckVerificationResponse
 {
-    public bool Valid { get; set; }
+    public string Id { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
-    public Verification? Verification { get; set; }
+    public string Phone { get; set; } = string.Empty;
+    public string? VerifiedAt { get; set; }
+    public int? RemainingAttempts { get; set; }
+
+    public bool IsVerified => Status == "verified";
 }
 
 public class ListVerificationsOptions
 {
     public int? Limit { get; set; }
     public string? Status { get; set; }
-    public string? Phone { get; set; }
 }
 
 public class VerificationListResponse
