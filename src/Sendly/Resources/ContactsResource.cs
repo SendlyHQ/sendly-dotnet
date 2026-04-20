@@ -65,6 +65,39 @@ public class ContactsResource
         await _client.DeleteAsync($"/contacts/{id}", cancellationToken);
     }
 
+    /// <summary>
+    /// Clear the invalid flag on a contact so future campaigns include it again.
+    /// Contacts get auto-flagged when a send fails with a terminal bad-number
+    /// error (landline, invalid number) or when a carrier lookup reports they
+    /// can't receive SMS.
+    /// </summary>
+    public async Task<Contact> MarkValidAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+    {
+        var doc = await _client.PostAsync($"/contacts/{id}/mark-valid", new { }, cancellationToken);
+        return JsonSerializer.Deserialize<Contact>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
+
+    /// <summary>
+    /// Trigger a background carrier lookup across your contacts. Landlines and
+    /// other non-SMS-capable numbers are auto-excluded from future campaigns.
+    /// Runs asynchronously (1-5 minutes). Idempotent: re-triggering while a
+    /// lookup is already running for the same scope is a no-op.
+    /// </summary>
+    public async Task<CheckNumbersResponse> CheckNumbersAsync(
+        CheckNumbersRequest? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        var body = new
+        {
+            listId = request?.ListId,
+            force = request?.Force ?? false,
+        };
+        var doc = await _client.PostAsync("/contacts/lookup", body, cancellationToken);
+        return JsonSerializer.Deserialize<CheckNumbersResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
+
     public async Task<ImportContactsResponse> ImportAsync(
         ImportContactsRequest request,
         CancellationToken cancellationToken = default)

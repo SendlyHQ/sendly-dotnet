@@ -7,8 +7,26 @@ public class Contact
     public string? Name { get; set; }
     public string? Email { get; set; }
     public Dictionary<string, object>? Metadata { get; set; }
+    public bool? OptedOut { get; set; }
+    public string? LineType { get; set; }
+    public string? CarrierName { get; set; }
+    public string? LineTypeCheckedAt { get; set; }
+    public string? InvalidReason { get; set; }
+    public string? InvalidatedAt { get; set; }
     public string? CreatedAt { get; set; }
     public string? UpdatedAt { get; set; }
+}
+
+public class CheckNumbersRequest
+{
+    public string? ListId { get; set; }
+    public bool Force { get; set; }
+}
+
+public class CheckNumbersResponse
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
 }
 
 public class ContactList
