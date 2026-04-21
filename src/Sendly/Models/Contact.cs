@@ -13,6 +13,7 @@ public class Contact
     public string? LineTypeCheckedAt { get; set; }
     public string? InvalidReason { get; set; }
     public string? InvalidatedAt { get; set; }
+    public string? UserMarkedValidAt { get; set; }
     public string? CreatedAt { get; set; }
     public string? UpdatedAt { get; set; }
 }
@@ -26,7 +27,41 @@ public class CheckNumbersRequest
 public class CheckNumbersResponse
 {
     public bool Success { get; set; }
+    public bool AlreadyRunning { get; set; }
     public string? Message { get; set; }
+}
+
+/// <summary>
+/// Source of a list-health event. Frozen enum — new values will be
+/// added in minor SDK versions, never removed.
+/// </summary>
+public static class ListHealthEventSource
+{
+    public const string SendFailure = "send_failure";
+    public const string CarrierLookup = "carrier_lookup";
+    public const string UserAction = "user_action";
+    public const string BulkMarkValid = "bulk_mark_valid";
+}
+
+/// <summary>
+/// Request for <c>Contacts.BulkMarkValidAsync</c>. Pass either <see cref="Ids"/>
+/// (up to 10,000 per call) OR <see cref="ListId"/> — not both. Foreign ids
+/// silently no-op via the per-organization filter.
+/// </summary>
+public class BulkMarkValidRequest
+{
+    public List<string>? Ids { get; set; }
+    public string? ListId { get; set; }
+}
+
+/// <summary>
+/// Response from <c>Contacts.BulkMarkValidAsync</c>. Reports how many contacts
+/// actually had their invalid flag cleared. Already-clean contacts and foreign
+/// ids don't count.
+/// </summary>
+public class BulkMarkValidResponse
+{
+    public int Cleared { get; set; }
 }
 
 public class ContactList

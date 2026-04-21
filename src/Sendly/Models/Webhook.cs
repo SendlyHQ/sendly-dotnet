@@ -19,6 +19,10 @@ public class Webhook
         public const string MessageBounced = "message.bounced";
         public const string MessageRetrying = "message.retrying";
         public const string MessageReceived = "message.received";
+        public const string ContactAutoFlagged = "contact.auto_flagged";
+        public const string ContactMarkedValid = "contact.marked_valid";
+        public const string ContactsLookupCompleted = "contacts.lookup_completed";
+        public const string ContactsBulkMarkedValid = "contacts.bulk_marked_valid";
     }
 
     /// <summary>

@@ -80,6 +80,33 @@ public class ContactsResource
     }
 
     /// <summary>
+    /// Clear the invalid flag on many contacts at once — the escape hatch for
+    /// when auto-flag misclassifies at scale. Pass either <see cref="BulkMarkValidRequest.Ids"/>
+    /// (up to 10,000 per call) OR <see cref="BulkMarkValidRequest.ListId"/>, not both.
+    /// Foreign ids silently no-op via the per-organization filter.
+    /// </summary>
+    /// <returns>Count of contacts whose flag was actually cleared.</returns>
+    public async Task<BulkMarkValidResponse> BulkMarkValidAsync(
+        BulkMarkValidRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var hasIds = request.Ids != null && request.Ids.Count > 0;
+        var hasListId = !string.IsNullOrEmpty(request.ListId);
+
+        if (!hasIds && !hasListId)
+            throw new ArgumentException("BulkMarkValid requires either Ids or ListId.", nameof(request));
+        if (hasIds && hasListId)
+            throw new ArgumentException("BulkMarkValid accepts Ids OR ListId, not both.", nameof(request));
+
+        object body = hasIds
+            ? new { ids = request.Ids }
+            : new { listId = request.ListId };
+
+        var doc = await _client.PostAsync("/contacts/bulk-mark-valid", body, cancellationToken);
+        return JsonSerializer.Deserialize<BulkMarkValidResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
+
+    /// <summary>
     /// Trigger a background carrier lookup across your contacts. Landlines and
     /// other non-SMS-capable numbers are auto-excluded from future campaigns.
     /// Runs asynchronously (1-5 minutes). Idempotent: re-triggering while a

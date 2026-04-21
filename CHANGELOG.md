@@ -1,5 +1,23 @@
 # Sendly (.NET)
 
+## 3.29.0
+
+### Minor Changes
+
+- `Contacts.BulkMarkValidAsync(new BulkMarkValidRequest { Ids / ListId })`: clear the invalid flag on many contacts at once (up to 10,000 per call). Escape hatch for when auto-mark misclassifies at scale.
+- Four new list-health `Webhook.EventTypes` constants: `ContactAutoFlagged`, `ContactMarkedValid`, `ContactsLookupCompleted`, `ContactsBulkMarkedValid`.
+- New `Sendly.Models.ListHealthEventSource` static class with frozen string constants (`SendFailure | CarrierLookup | UserAction | BulkMarkValid`) for the `source` field on auto-flag and mark-valid webhooks.
+- `Contact` gains `UserMarkedValidAt` — when a user manually cleared an auto-flag. Carrier re-checks respect this timestamp and leave the contact clean.
+- `CheckNumbersResponse` gains `AlreadyRunning` so the client knows when a rapid re-trigger was collapsed against an in-flight lookup.
+
+## 3.28.0
+
+### Minor Changes
+
+- `contacts.MarkValidAsync(id)`: clear the auto-exclusion flag on a contact.
+- `contacts.CheckNumbersAsync(new CheckNumbersRequest { ListId, Force })`: trigger a background carrier lookup.
+- `Contact` model gains OptedOut, LineType, CarrierName, LineTypeCheckedAt, InvalidReason, InvalidatedAt.
+
 ## 3.18.1
 
 ### Patch Changes
