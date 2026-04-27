@@ -25,7 +25,7 @@ dotnet add package Sendly
 Install-Package Sendly
 
 # PackageReference (add to .csproj)
-<PackageReference Include="Sendly" Version="3.7.0" />
+<PackageReference Include="Sendly" Version="3.29.0" />
 ```
 
 ## Quick Start
@@ -391,7 +391,7 @@ message.IsPending    // bool
 
 | Tier | Countries | Credits per SMS |
 |------|-----------|-----------------|
-| Domestic | US, CA | 1 |
+| Domestic | US, CA | 2 |
 | Tier 1 | GB, PL, IN, etc. | 8 |
 | Tier 2 | FR, JP, AU, etc. | 12 |
 | Tier 3 | DE, IT, MX, etc. | 16 |
