@@ -153,6 +153,68 @@ public class WebhooksResource
     }
 
     /// <summary>
+    /// Replay failed or cancelled webhook deliveries from the audit log.
+    /// </summary>
+    /// <remarks>
+    /// Use after a customer endpoint has recovered from an outage to re-fire
+    /// deliveries we recorded but couldn't deliver. Each replay creates a new
+    /// delivery row preserving the original event_id so customers can dedupe.
+    /// Rejects with HTTP 409 if the circuit is currently open — call
+    /// <see cref="ResetCircuitAsync"/> first.
+    /// </remarks>
+    public async Task<JsonDocument> RedeliverAsync(
+        string id,
+        RedeliverOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(id))
+            throw new ValidationException("Webhook ID is required");
+
+        var body = new Dictionary<string, object?>();
+        if (options?.Since is not null) body["since"] = options.Since;
+        if (options?.Until is not null) body["until"] = options.Until;
+        if (options?.EventTypes is not null) body["event_types"] = options.EventTypes;
+        if (options?.Statuses is not null) body["statuses"] = options.Statuses;
+        if (options?.Limit is not null) body["limit"] = options.Limit;
+
+        return await _client.PostAsync<object>(
+            $"/webhooks/{Uri.EscapeDataString(id)}/redeliver",
+            body,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Backfill missed webhook events from the underlying message log.
+    /// </summary>
+    /// <remarks>
+    /// Use when a circuit-breaker outage left events with no audit row (the
+    /// case <see cref="RedeliverAsync"/> cannot recover). Synthesized events
+    /// have fresh IDs; clients should dedupe by
+    /// <c>event.data.object.id</c> (the message ID). Rejects with HTTP 409
+    /// if the circuit is currently open — call
+    /// <see cref="ResetCircuitAsync"/> first.
+    /// </remarks>
+    public async Task<JsonDocument> BackfillAsync(
+        string id,
+        BackfillOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(id))
+            throw new ValidationException("Webhook ID is required");
+
+        var body = new Dictionary<string, object?>();
+        if (options?.Since is not null) body["since"] = options.Since;
+        if (options?.Until is not null) body["until"] = options.Until;
+        if (options?.EventTypes is not null) body["event_types"] = options.EventTypes;
+        if (options?.Limit is not null) body["limit"] = options.Limit;
+
+        return await _client.PostAsync<object>(
+            $"/webhooks/{Uri.EscapeDataString(id)}/backfill",
+            body,
+            cancellationToken);
+    }
+
+    /// <summary>
     /// Rotates a webhook's secret.
     /// </summary>
     /// <param name="id">Webhook ID</param>
@@ -269,4 +331,32 @@ public class WebhooksResource
 
         return eventTypes;
     }
+}
+
+/// <summary>
+/// Options for <see cref="WebhooksResource.RedeliverAsync"/>.
+/// </summary>
+public sealed class RedeliverOptions
+{
+    /// <summary>Earliest delivery created_at, ISO-8601. Default: now − 24h.</summary>
+    public string? Since { get; set; }
+    /// <summary>Latest delivery created_at, ISO-8601. Default: now.</summary>
+    public string? Until { get; set; }
+    /// <summary>Filter by event type. Default: all.</summary>
+    public IList<string>? EventTypes { get; set; }
+    /// <summary>Replay deliveries in any of these statuses. Default: ["failed", "cancelled"].</summary>
+    public IList<string>? Statuses { get; set; }
+    /// <summary>Maximum deliveries to requeue (default 1000, max 10000).</summary>
+    public int? Limit { get; set; }
+}
+
+/// <summary>
+/// Options for <see cref="WebhooksResource.BackfillAsync"/>.
+/// </summary>
+public sealed class BackfillOptions
+{
+    public string? Since { get; set; }
+    public string? Until { get; set; }
+    public IList<string>? EventTypes { get; set; }
+    public int? Limit { get; set; }
 }
