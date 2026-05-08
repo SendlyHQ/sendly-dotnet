@@ -74,18 +74,45 @@ public class EnterpriseWorkspacesResource
         return DeleteEnterpriseWorkspaceResponse.FromJson(response.RootElement, _client.JsonOptions);
     }
 
+    /// <summary>
+    /// Submit (or resubmit) a verification for an enterprise workspace.
+    ///
+    /// Partial-update friendly (May 2026): for a resubmit on an existing
+    /// workspace, you only need to send the fields you want to change —
+    /// every other field is preserved from the existing record. Hosted
+    /// page URLs (/biz/, /opt-in/, /legal/) generated during provision
+    /// are auto-preserved.
+    ///
+    /// For sole proprietors, leave Brn / BrnType / BrnCountry null — the
+    /// server strips them before forwarding to the carrier.
+    /// </summary>
     public async Task<SubmitVerificationResponse> SubmitVerificationAsync(
         string workspaceId,
-        SubmitVerificationOptions options,
+        VerificationSubmitInput input,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(workspaceId))
             throw new ValidationException("Workspace ID is required");
+        if (input == null)
+            throw new ValidationException("Verification input is required");
 
         using var response = await _client.PostAsync(
             $"/enterprise/workspaces/{Uri.EscapeDataString(workspaceId)}/verification/submit",
-            options, cancellationToken);
+            input, cancellationToken);
         return SubmitVerificationResponse.FromJson(response.RootElement, _client.JsonOptions);
+    }
+
+    /// <summary>
+    /// Convenience alias for resubmits. Identical to
+    /// <see cref="SubmitVerificationAsync"/> but reads more naturally
+    /// when you only want to update a few fields after a rejection.
+    /// </summary>
+    public async Task<SubmitVerificationResponse> ResubmitVerificationAsync(
+        string workspaceId,
+        VerificationSubmitInput partialUpdates,
+        CancellationToken cancellationToken = default)
+    {
+        return await SubmitVerificationAsync(workspaceId, partialUpdates, cancellationToken);
     }
 
     public async Task<InheritVerificationResponse> InheritVerificationAsync(

@@ -141,103 +141,157 @@ public class DeleteEnterpriseWorkspaceResponse
     }
 }
 
-public class SubmitVerificationOptions
+/// <summary>
+/// Verification submit/resubmit payload. All fields are nullable so unset
+/// properties are omitted from the JSON body — the server merges with the
+/// existing record on resubmits.
+///
+/// For initial provisioning (no existing record) the server requires:
+/// businessName, website, address, contact, useCase, useCaseSummary,
+/// sampleMessages, optInWorkflow.
+///
+/// For sole proprietors leave Brn / BrnType / BrnCountry null — the server
+/// strips them before forwarding to the carrier.
+/// </summary>
+public class VerificationSubmitInput
 {
     [JsonPropertyName("businessName")]
-    public string BusinessName { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? BusinessName { get; set; }
 
     [JsonPropertyName("doingBusinessAs")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? DoingBusinessAs { get; set; }
 
     [JsonPropertyName("website")]
-    public string Website { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Website { get; set; }
 
     [JsonPropertyName("address")]
-    public VerificationAddress Address { get; set; } = new();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public VerificationAddress? Address { get; set; }
 
     [JsonPropertyName("contact")]
-    public VerificationContact Contact { get; set; } = new();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public VerificationContact? Contact { get; set; }
 
     [JsonPropertyName("brn")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Brn { get; set; }
 
     [JsonPropertyName("brnType")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? BrnType { get; set; }
 
     [JsonPropertyName("brnCountry")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? BrnCountry { get; set; }
 
+    [JsonPropertyName("entityType")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? EntityType { get; set; }
+
     [JsonPropertyName("useCase")]
-    public string UseCase { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UseCase { get; set; }
 
     [JsonPropertyName("useCaseSummary")]
-    public string UseCaseSummary { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UseCaseSummary { get; set; }
 
     [JsonPropertyName("sampleMessages")]
-    public string SampleMessages { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SampleMessages { get; set; }
 
     [JsonPropertyName("optInWorkflow")]
-    public string OptInWorkflow { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? OptInWorkflow { get; set; }
 
     [JsonPropertyName("optInImageUrls")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? OptInImageUrls { get; set; }
 
     [JsonPropertyName("monthlyVolume")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? MonthlyVolume { get; set; }
 
     [JsonPropertyName("additionalInformation")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? AdditionalInformation { get; set; }
 
     [JsonPropertyName("ageGatedContent")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? AgeGatedContent { get; set; }
 
     [JsonPropertyName("isvReseller")]
-    public bool? IsvReseller { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? IsvReseller { get; set; }
 
     [JsonPropertyName("privacyUrl")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? PrivacyUrl { get; set; }
 
     [JsonPropertyName("termsUrl")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? TermsUrl { get; set; }
+}
 
-    [JsonPropertyName("entityType")]
-    public string? EntityType { get; set; }
+/// <summary>
+/// Backwards-compatible alias for <see cref="VerificationSubmitInput"/>.
+/// Prefer <see cref="VerificationSubmitInput"/> in new code.
+/// </summary>
+public class SubmitVerificationOptions : VerificationSubmitInput
+{
 }
 
 public class VerificationAddress
 {
     [JsonPropertyName("street")]
-    public string Street { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Street { get; set; }
+
+    [JsonPropertyName("address1")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Address1 { get; set; }
 
     [JsonPropertyName("address2")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Address2 { get; set; }
 
     [JsonPropertyName("city")]
-    public string City { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? City { get; set; }
 
     [JsonPropertyName("state")]
-    public string State { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? State { get; set; }
 
     [JsonPropertyName("zip")]
-    public string Zip { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Zip { get; set; }
 
     [JsonPropertyName("country")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Country { get; set; }
 }
 
 public class VerificationContact
 {
     [JsonPropertyName("firstName")]
-    public string FirstName { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? FirstName { get; set; }
 
     [JsonPropertyName("lastName")]
-    public string LastName { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LastName { get; set; }
 
     [JsonPropertyName("email")]
-    public string Email { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Email { get; set; }
 
     [JsonPropertyName("phone")]
-    public string Phone { get; set; } = string.Empty;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Phone { get; set; }
 }
 
 public class SubmitVerificationResponse
