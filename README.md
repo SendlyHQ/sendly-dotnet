@@ -25,7 +25,7 @@ dotnet add package Sendly
 Install-Package Sendly
 
 # PackageReference (add to .csproj)
-<PackageReference Include="Sendly" Version="3.29.0" />
+<PackageReference Include="Sendly" Version="3.31.0" />
 ```
 
 ## Quick Start
@@ -201,8 +201,8 @@ var preview = await client.Messages.PreviewBatchAsync(new SendBatchRequest()
     .AddMessage("+15551234567", "Hello User 1!")
     .AddMessage("+447700900123", "Hello UK!")
 );
-Console.WriteLine($"Total credits needed: {preview.TotalCredits}");
-Console.WriteLine($"Valid: {preview.Valid}, Invalid: {preview.Invalid}");
+Console.WriteLine($"Credits needed: {preview.CreditsNeeded}");
+Console.WriteLine($"Will send: {preview.WillSend}, Blocked: {preview.Blocked}");
 ```
 
 ### Iterate All Messages
@@ -228,10 +228,10 @@ await foreach (var message in client.Messages.GetAllAsync(new ListMessagesOption
 
 ```csharp
 // Create a webhook endpoint
-var webhook = await client.Webhooks.CreateAsync(new CreateWebhookRequest
+var webhook = await client.Webhooks.CreateAsync(new CreateWebhookOptions
 {
     Url = "https://example.com/webhooks/sendly",
-    Events = new[] { "message.delivered", "message.failed" }
+    Events = new List<string> { "message.delivered", "message.failed" }
 });
 
 Console.WriteLine(webhook.Id);
@@ -244,10 +244,10 @@ var webhooks = await client.Webhooks.ListAsync();
 var wh = await client.Webhooks.GetAsync("whk_xxx");
 
 // Update a webhook
-await client.Webhooks.UpdateAsync("whk_xxx", new UpdateWebhookRequest
+await client.Webhooks.UpdateAsync("whk_xxx", new UpdateWebhookOptions
 {
     Url = "https://new-endpoint.example.com/webhook",
-    Events = new[] { "message.delivered", "message.failed", "message.sent" }
+    Events = new List<string> { "message.delivered", "message.failed", "message.sent" }
 });
 
 // Test a webhook
@@ -281,7 +281,7 @@ Console.WriteLine($"Reserved: {credits.ReservedBalance} credits");
 Console.WriteLine($"Total: {credits.Balance} credits");
 
 // View credit transaction history
-var transactions = await client.Account.GetCreditTransactionsAsync();
+var transactions = await client.Account.ListTransactionsAsync();
 foreach (var tx in transactions)
 {
     Console.WriteLine($"{tx.Type}: {tx.Amount} credits - {tx.Description}");
@@ -302,11 +302,9 @@ var usage = await client.Account.GetApiKeyUsageAsync("key_xxx");
 Console.WriteLine($"Messages sent: {usage.MessagesSent}");
 
 // Create a new API key
-var newKey = await client.Account.CreateApiKeyAsync(new CreateApiKeyRequest
+var newKey = await client.Account.CreateApiKeyAsync(new CreateApiKeyOptions
 {
-    Name = "Production Key",
-    Type = "live",
-    Scopes = new[] { "sms:send", "sms:read" }
+    Name = "Production Key"
 });
 Console.WriteLine($"New key: {newKey.Key}"); // Only shown once!
 
@@ -455,13 +453,9 @@ await client.Enterprise.Workspaces.DeleteAsync("ws_xxx");
 ### Credits & API Keys
 
 ```csharp
-await client.Enterprise.Workspaces.TransferCreditsAsync("ws_dest", new TransferCreditsOptions
-{
-    SourceWorkspaceId = "ws_source",
-    Amount = 5000
-});
+await client.Enterprise.Workspaces.TransferCreditsAsync("ws_dest", "ws_source", 5000);
 
-var key = await client.Enterprise.Workspaces.CreateKeyAsync("ws_xxx", new CreateKeyOptions
+var key = await client.Enterprise.Workspaces.CreateKeyAsync("ws_xxx", new CreateWorkspaceKeyOptions
 {
     Name = "Production",
     Type = "live"
@@ -476,7 +470,7 @@ await client.Enterprise.Workspaces.RevokeKeyAsync("ws_xxx", "key_abc");
 ```csharp
 await client.Enterprise.Webhooks.SetAsync("https://yourapp.com/webhooks");
 var overview = await client.Enterprise.Analytics.OverviewAsync();
-var messages = await client.Enterprise.Analytics.MessagesAsync("30d");
+var messages = await client.Enterprise.Analytics.MessagesAsync(new EnterpriseAnalyticsOptions { Period = "30d" });
 var delivery = await client.Enterprise.Analytics.DeliveryAsync();
 ```
 
