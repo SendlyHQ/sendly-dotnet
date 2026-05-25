@@ -1,5 +1,18 @@
 # Sendly (.NET)
 
+## 3.32.0
+
+### Minor Changes
+
+- New `BusinessUpgrade` resource exposes the toll-free entity-upgrade ("fork-with-new-number") flow on the top-level `SendlyClient` as `client.BusinessUpgrade`. Seven methods:
+  - `PreflightAsync(PreflightCandidate)` — advisory validation (no writes) of a candidate upgrade payload. Returns `PreflightReport` with `Verdict`, structured `Issues`, and `ProposedFixes`.
+  - `BestPrefillAsync()` — "best-of" prefill across the caller's verified workspaces, useful when the current workspace has thin messaging data.
+  - `StartAsync(workspaceId, StartUpgradeParams, EinDocumentInput?)` — provisions a new toll-free number + messaging profile under the new entity and submits to the carrier. Multipart upload; EIN doc accepts `Bytes`, `Stream`, or `Path`. Existing number keeps sending during the 1-2 week review window; atomic swap on approval.
+  - `StatusAsync(workspaceId)` — reports whether an upgrade is in flight; `Pending` is null when there's none.
+  - `CancelAsync(workspaceId)` — idempotent rollback that releases the reserved number, deletes the new messaging profile, and removes the stored EIN document.
+  - `ResubmitAsync(workspaceId, StartUpgradeParams, EinDocumentInput?)` — resubmits a rejected upgrade with edits and optionally a new EIN doc.
+  - `SetDispositionAsync(workspaceId, DispositionRequest)` — on approval, choose `"moved"` (keep the old number under another workspace via `TargetWorkspaceId`) or `"released"` (return it to the carrier pool).
+
 ## 3.31.0
 
 ### Patch Changes

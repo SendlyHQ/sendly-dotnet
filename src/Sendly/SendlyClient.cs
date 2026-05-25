@@ -94,6 +94,11 @@ public class SendlyClient : IDisposable
     public RulesResource Rules { get; }
 
     /// <summary>
+    /// Gets the BusinessUpgrade resource — entity-upgrade ("fork-with-new-number") flow.
+    /// </summary>
+    public BusinessUpgradeResource BusinessUpgrade { get; }
+
+    /// <summary>
     /// Creates a new Sendly client.
     /// </summary>
     /// <param name="apiKey">Your Sendly API key</param>
@@ -141,6 +146,7 @@ public class SendlyClient : IDisposable
         Labels = new LabelsResource(this);
         Drafts = new DraftsResource(this);
         Rules = new RulesResource(this);
+        BusinessUpgrade = new BusinessUpgradeResource(this);
     }
 
     /// <summary>
