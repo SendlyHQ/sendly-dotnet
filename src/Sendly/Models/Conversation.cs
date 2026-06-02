@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sendly.Models;
 
 public class Conversation
@@ -129,4 +131,20 @@ public class ConversationContextBusiness
 {
     public string? Name { get; set; }
     public string? UseCase { get; set; }
+}
+
+public class SuggestedReply
+{
+    public string Text { get; set; } = string.Empty;
+    public string Tone { get; set; } = string.Empty;
+}
+
+public class SuggestRepliesResponse
+{
+    public List<SuggestedReply> Suggestions { get; set; } = new();
+
+    [JsonPropertyName("basedOnMessageId")]
+    public string? BasedOnMessageId { get; set; }
+
+    public string? Model { get; set; }
 }

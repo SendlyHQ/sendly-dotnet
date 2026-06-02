@@ -204,4 +204,21 @@ public class ConversationsResource
         using var doc = await _client.GetAsync($"/conversations/{Uri.EscapeDataString(id)}/context", queryParams.Count > 0 ? queryParams : null, cancellationToken);
         return JsonSerializer.Deserialize<ConversationContextResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
+
+    /// <summary>
+    /// Generates AI-suggested replies for a conversation based on its recent messages.
+    /// </summary>
+    /// <param name="id">Conversation ID</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The suggested replies</returns>
+    public async Task<SuggestRepliesResponse> SuggestRepliesAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(id))
+            throw new ValidationException("Conversation ID is required");
+
+        using var doc = await _client.PostAsync($"/conversations/{Uri.EscapeDataString(id)}/suggest-replies", new { }, cancellationToken);
+        return JsonSerializer.Deserialize<SuggestRepliesResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
 }
