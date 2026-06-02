@@ -99,6 +99,11 @@ public class SendlyClient : IDisposable
     public BusinessUpgradeResource BusinessUpgrade { get; }
 
     /// <summary>
+    /// Gets the Numbers resource — buy and manage phone numbers.
+    /// </summary>
+    public NumbersResource Numbers { get; }
+
+    /// <summary>
     /// Creates a new Sendly client.
     /// </summary>
     /// <param name="apiKey">Your Sendly API key</param>
@@ -147,6 +152,7 @@ public class SendlyClient : IDisposable
         Drafts = new DraftsResource(this);
         Rules = new RulesResource(this);
         BusinessUpgrade = new BusinessUpgradeResource(this);
+        Numbers = new NumbersResource(this);
     }
 
     /// <summary>
