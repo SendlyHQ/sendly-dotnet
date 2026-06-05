@@ -212,6 +212,18 @@ public class OwnedNumber
 
     [JsonPropertyName("monthlyCostCents")]
     public int MonthlyCostCents { get; set; }
+
+    /// <summary>When regulatory documents were submitted (ISO-8601), or null if the number still needs them.</summary>
+    [JsonPropertyName("requirementsSubmittedAt")]
+    public string? RequirementsSubmittedAt { get; set; }
+
+    /// <summary>True if the number is scheduled for release at period end.</summary>
+    [JsonPropertyName("pendingCancellation")]
+    public bool PendingCancellation { get; set; }
+
+    /// <summary>When the number is scheduled to be released (ISO-8601), or null.</summary>
+    [JsonPropertyName("scheduledReleaseAt")]
+    public string? ScheduledReleaseAt { get; set; }
 }
 
 public class OwnedNumbersResponse
