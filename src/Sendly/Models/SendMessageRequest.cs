@@ -20,6 +20,13 @@ public class SendMessageRequest
     public string Text { get; set; }
 
     /// <summary>
+    /// Sender phone number or alphanumeric sender ID. When omitted, the account default is used.
+    /// </summary>
+    [JsonPropertyName("from")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? From { get; set; }
+
+    /// <summary>
     /// Message type: "marketing" (default, subject to quiet hours) or "transactional" (24/7).
     /// </summary>
     [JsonPropertyName("messageType")]
@@ -43,12 +50,13 @@ public class SendMessageRequest
     /// <summary>
     /// Creates a new send message request.
     /// </summary>
-    public SendMessageRequest(string to, string text, string? messageType = null, Dictionary<string, object>? metadata = null, List<string>? mediaUrls = null)
+    public SendMessageRequest(string to, string text, string? messageType = null, Dictionary<string, object>? metadata = null, List<string>? mediaUrls = null, string? from = null)
     {
         To = to;
         Text = text;
         MessageType = messageType;
         Metadata = metadata;
         MediaUrls = mediaUrls;
+        From = from;
     }
 }
