@@ -106,6 +106,13 @@ var message = await client.Messages.SendAsync(new SendMessageRequest(
     } 
 });
 
+// Send from one of your owned numbers (or an alphanumeric sender ID).
+// Omit From to use your default sender.
+var message = await client.Messages.SendAsync(new SendMessageRequest(
+    "+15551234567",
+    "Hello from our team!"
+) { From = "+447111111111" });
+
 Console.WriteLine(message.Id);
 Console.WriteLine(message.Status);
 Console.WriteLine(message.CreditsUsed);
