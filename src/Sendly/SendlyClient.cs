@@ -104,6 +104,11 @@ public class SendlyClient : IDisposable
     public NumbersResource Numbers { get; }
 
     /// <summary>
+    /// Gets the 10DLC resource — register for carrier review and text from local US numbers.
+    /// </summary>
+    public TenDlcResource TenDlc { get; }
+
+    /// <summary>
     /// Creates a new Sendly client.
     /// </summary>
     /// <param name="apiKey">Your Sendly API key</param>
@@ -153,6 +158,7 @@ public class SendlyClient : IDisposable
         Rules = new RulesResource(this);
         BusinessUpgrade = new BusinessUpgradeResource(this);
         Numbers = new NumbersResource(this);
+        TenDlc = new TenDlcResource(this);
     }
 
     /// <summary>

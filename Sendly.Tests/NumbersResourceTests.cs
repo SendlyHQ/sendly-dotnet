@@ -248,7 +248,7 @@ public class NumbersResourceTests : IDisposable
             ""action"": {
                 ""url"": ""https://sendly.live/action/abc123"",
                 ""code"": ""ABC123"",
-                ""expiresAt"": ""2026-06-03T10:00:00Z""
+                ""expiresAt"": 1780480800000
             }
         }";
         _mockHandler.QueueSuccessResponse(responseJson);
@@ -267,7 +267,7 @@ public class NumbersResourceTests : IDisposable
         Assert.NotNull(result.Action);
         Assert.Equal("https://sendly.live/action/abc123", result.Action!.Url);
         Assert.Equal("ABC123", result.Action.Code);
-        Assert.Equal("2026-06-03T10:00:00Z", result.Action.ExpiresAt);
+        Assert.Equal(1780480800000L, result.Action.ExpiresAt);
         Assert.NotNull(result.Requirements);
     }
 

@@ -160,11 +160,11 @@ public static class Webhooks
 
             if (root.TryGetProperty("created", out var createdEl))
             {
-                webhookEvent.Created = createdEl;
+                webhookEvent.Created = createdEl.Clone();
             }
             else if (root.TryGetProperty("created_at", out var createdAtEl))
             {
-                webhookEvent.Created = createdAtEl;
+                webhookEvent.Created = createdAtEl.Clone();
             }
 
             return webhookEvent;

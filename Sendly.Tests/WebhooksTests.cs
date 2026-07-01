@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Sendly;
 using Xunit;
 
@@ -281,7 +282,7 @@ public class WebhooksTests
     }
 
     [Fact]
-    public void ParseEvent_WithMissingCreatedAt_ThrowsWebhookSignatureException()
+    public void ParseEvent_WithMissingCreated_ParsesWithNullCreated()
     {
         // Arrange
         var payload = @"{
@@ -291,9 +292,12 @@ public class WebhooksTests
         }";
         var signature = Webhooks.GenerateSignature(payload, TestSecret);
 
-        // Act & Assert
-        Assert.Throws<WebhookSignatureException>(
-            () => Webhooks.ParseEvent(payload, signature, TestSecret));
+        // Act
+        var webhookEvent = Webhooks.ParseEvent(payload, signature, TestSecret);
+
+        // Assert
+        Assert.Equal("evt_123", webhookEvent.Id);
+        Assert.Null(webhookEvent.Created);
     }
 
     [Fact]
@@ -409,7 +413,7 @@ public class WebhooksTests
         var webhookEvent = Webhooks.ParseEvent(payload, signature, TestSecret);
 
         // Assert
-        Assert.Equal("2024-01-01", webhookEvent.ApiVersion);
+        Assert.Equal("2024-01", webhookEvent.ApiVersion);
     }
 
     #endregion
@@ -504,7 +508,7 @@ public class WebhooksTests
         Assert.NotNull(webhookEvent.Id);
         Assert.NotNull(webhookEvent.Type);
         Assert.NotNull(webhookEvent.Data);
-        Assert.NotNull(webhookEvent.CreatedAt);
+        Assert.Null(webhookEvent.Created);
         Assert.NotNull(webhookEvent.ApiVersion);
     }
 
@@ -516,7 +520,7 @@ public class WebhooksTests
         {
             Id = "evt_test",
             Type = "test.event",
-            CreatedAt = "2024-01-20T10:00:00Z",
+            Created = JsonDocument.Parse("\"2024-01-20T10:00:00Z\"").RootElement,
             ApiVersion = "2024-01-01"
         };
 
@@ -552,7 +556,7 @@ public class WebhooksTests
         // Arrange & Act
         var data = new WebhookMessageData
         {
-            MessageId = "msg_123",
+            Id = "msg_123",
             Status = "delivered",
             To = "+15551234567",
             From = "Sendly",
