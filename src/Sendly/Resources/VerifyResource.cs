@@ -52,7 +52,7 @@ public class VerifyResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync($"/verify/{id}/resend", new { }, cancellationToken);
+        var doc = await _client.PostAsync($"/verify/{Uri.EscapeDataString(id)}/resend", new { }, cancellationToken);
         return JsonSerializer.Deserialize<SendVerificationResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -61,7 +61,7 @@ public class VerifyResource
         string code,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync($"/verify/{id}/check", new { code }, cancellationToken);
+        var doc = await _client.PostAsync($"/verify/{Uri.EscapeDataString(id)}/check", new { code }, cancellationToken);
         return JsonSerializer.Deserialize<CheckVerificationResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -69,7 +69,7 @@ public class VerifyResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.GetAsync($"/verify/{id}", null, cancellationToken);
+        var doc = await _client.GetAsync($"/verify/{Uri.EscapeDataString(id)}", null, cancellationToken);
         return JsonSerializer.Deserialize<Verification>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 

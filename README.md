@@ -25,7 +25,7 @@ dotnet add package Sendly
 Install-Package Sendly
 
 # PackageReference (add to .csproj)
-<PackageReference Include="Sendly" Version="3.36.0" />
+<PackageReference Include="Sendly" Version="4.0.0" />
 ```
 
 ## Quick Start
@@ -709,6 +709,114 @@ foreach (var eventType in eventTypes)
     Console.WriteLine($"Event: {eventType}");
 }
 ```
+
+### Receiving events
+
+`Sendly.Webhooks` (the static class, not the `client.Webhooks` resource)
+verifies the signature and parses the body. Hand it the raw request body: the
+signature covers the exact bytes that were sent, so a re-serialized object no
+longer matches.
+
+`WebhookEvent.Data` is a *message* view of `data.object`. That is right for
+`message.*` and wrong for everything else: `rcs_brand.*`, `rcs_agent.*`,
+`whatsapp_account.*`, `whatsapp_template.*`, `call.*`, `brand.*`, `campaign.*`,
+`assignment.*`, `number.*`, `port*`, `conversation.*`, `draft.*`, `contact.*`
+and `verification.*` carry a different object entirely, and nothing is raised
+when one arrives. `Data` comes back at its defaults, except where a key name
+happens to coincide (`id`, `status`), which is worse: it binds another
+record's value. Two accessors give you the real payload, and both are
+populated for every event type, `message.*` included:
+
+- `ObjectAs<T>()` deserializes `data.object` into a type you name.
+- `RawObject` is `data.object` as a `JsonElement`, exactly as it arrived.
+
+`ObjectAs<T>()` uses the `System.Text.Json` defaults, which do not map
+snake_case, so name each wire field with `[JsonPropertyName]` (or pass your own
+`JsonSerializerOptions`). It deserializes, it does not validate: a field the
+payload never carried comes back at its default.
+
+```csharp
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Sendly;
+
+app.MapPost("/webhooks/sendly", async (HttpRequest request) =>
+{
+    using var reader = new StreamReader(request.Body);
+    var payload = await reader.ReadToEndAsync(); // raw body, not a re-serialized object
+
+    WebhookEvent evt;
+    try
+    {
+        evt = Webhooks.ParseEvent(
+            payload,
+            request.Headers["X-Sendly-Signature"].ToString(),
+            webhookSecret,
+            request.Headers["X-Sendly-Timestamp"].ToString()
+        );
+    }
+    catch (WebhookSignatureException)
+    {
+        return Results.Unauthorized();
+    }
+
+    switch (evt.Type)
+    {
+        case "message.delivered":
+            // message.* events only: Data is the message
+            Console.WriteLine($"{evt.Data.Id} delivered to {evt.Data.To}");
+            break;
+
+        case "rcs_agent.live":
+        case "rcs_agent.rejected":
+            var agent = evt.ObjectAs<RcsAgentEventObject>();
+            Console.WriteLine($"Agent {agent?.AgentId} is {agent?.Stage} ({agent?.Reason})");
+            break;
+
+        case "verification.delivered":
+            // WebhookVerificationData ships with the SDK and already matches
+            var verification = evt.ObjectAs<WebhookVerificationData>();
+            Console.WriteLine($"{verification?.Phone}: {verification?.DeliveryStatus}");
+            break;
+
+        case "contact.auto_flagged":
+            // data.object is a contact, so evt.Data.Id holds the CONTACT id
+            if (evt.RawObject is JsonElement contact)
+            {
+                var contactId = contact.GetProperty("id").GetString();
+                var reason = contact.TryGetProperty("invalid_reason", out var r)
+                    ? r.GetString()
+                    : null;
+                Console.WriteLine($"Contact {contactId} flagged: {reason}");
+            }
+            break;
+    }
+
+    return Results.Ok();
+});
+
+// data.object for rcs_agent.* is not message-shaped, so declare its fields
+public class RcsAgentEventObject
+{
+    [JsonPropertyName("agent_id")]
+    public string AgentId { get; set; } = "";
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("stage")]
+    public string? Stage { get; set; }
+
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+}
+```
+
+One trap worth naming: `contact.auto_flagged` carries a contact, so
+`evt.Data.Id` holds the *contact* id rather than a message id. A handler that
+keys on it acts on the wrong record. The `Webhook.EventTypes` constants in
+`Sendly.Models` name every event the API emits and are the safest thing to put
+in a subscription's `Events` list.
 
 ## Account & Credits
 

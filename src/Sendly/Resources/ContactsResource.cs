@@ -37,7 +37,7 @@ public class ContactsResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.GetAsync($"/contacts/{id}", null, cancellationToken);
+        var doc = await _client.GetAsync($"/contacts/{Uri.EscapeDataString(id)}", null, cancellationToken);
         return JsonSerializer.Deserialize<Contact>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -54,7 +54,7 @@ public class ContactsResource
         UpdateContactRequest request,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PatchAsync($"/contacts/{id}", request, cancellationToken);
+        var doc = await _client.PatchAsync($"/contacts/{Uri.EscapeDataString(id)}", request, cancellationToken);
         return JsonSerializer.Deserialize<Contact>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -62,7 +62,7 @@ public class ContactsResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        await _client.DeleteAsync($"/contacts/{id}", cancellationToken);
+        await _client.DeleteAsync($"/contacts/{Uri.EscapeDataString(id)}", cancellationToken);
     }
 
     /// <summary>
@@ -75,7 +75,7 @@ public class ContactsResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync($"/contacts/{id}/mark-valid", new { }, cancellationToken);
+        var doc = await _client.PostAsync($"/contacts/{Uri.EscapeDataString(id)}/mark-valid", new { }, cancellationToken);
         return JsonSerializer.Deserialize<Contact>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -154,7 +154,7 @@ public class ContactListsResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.GetAsync($"/contact-lists/{id}", null, cancellationToken);
+        var doc = await _client.GetAsync($"/contact-lists/{Uri.EscapeDataString(id)}", null, cancellationToken);
         return JsonSerializer.Deserialize<ContactList>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -171,7 +171,7 @@ public class ContactListsResource
         UpdateContactListRequest request,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PatchAsync($"/contact-lists/{id}", request, cancellationToken);
+        var doc = await _client.PatchAsync($"/contact-lists/{Uri.EscapeDataString(id)}", request, cancellationToken);
         return JsonSerializer.Deserialize<ContactList>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -179,7 +179,7 @@ public class ContactListsResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        await _client.DeleteAsync($"/contact-lists/{id}", cancellationToken);
+        await _client.DeleteAsync($"/contact-lists/{Uri.EscapeDataString(id)}", cancellationToken);
     }
 
     public async Task AddContactsAsync(
@@ -188,7 +188,7 @@ public class ContactListsResource
         CancellationToken cancellationToken = default)
     {
         var request = new AddContactsRequest { ContactIds = contactIds };
-        await _client.PostAsync($"/contact-lists/{listId}/contacts", request, cancellationToken);
+        await _client.PostAsync($"/contact-lists/{Uri.EscapeDataString(listId)}/contacts", request, cancellationToken);
     }
 
     public async Task RemoveContactAsync(
@@ -196,6 +196,6 @@ public class ContactListsResource
         string contactId,
         CancellationToken cancellationToken = default)
     {
-        await _client.DeleteAsync($"/contact-lists/{listId}/contacts/{contactId}", cancellationToken);
+        await _client.DeleteAsync($"/contact-lists/{Uri.EscapeDataString(listId)}/contacts/{Uri.EscapeDataString(contactId)}", cancellationToken);
     }
 }

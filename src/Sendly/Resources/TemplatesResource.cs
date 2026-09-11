@@ -33,7 +33,7 @@ public class TemplatesResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.GetAsync($"/templates/{id}", null, cancellationToken);
+        var doc = await _client.GetAsync($"/templates/{Uri.EscapeDataString(id)}", null, cancellationToken);
         return JsonSerializer.Deserialize<Template>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -50,7 +50,7 @@ public class TemplatesResource
         UpdateTemplateRequest request,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PatchAsync($"/templates/{id}", request, cancellationToken);
+        var doc = await _client.PatchAsync($"/templates/{Uri.EscapeDataString(id)}", request, cancellationToken);
         return JsonSerializer.Deserialize<Template>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -58,7 +58,7 @@ public class TemplatesResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.DeleteAsync($"/templates/{id}", cancellationToken);
+        var doc = await _client.DeleteAsync($"/templates/{Uri.EscapeDataString(id)}", cancellationToken);
         return JsonSerializer.Deserialize<DeleteTemplateResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -66,7 +66,7 @@ public class TemplatesResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync($"/templates/{id}/publish", new { }, cancellationToken);
+        var doc = await _client.PostAsync($"/templates/{Uri.EscapeDataString(id)}/publish", new { }, cancellationToken);
         return JsonSerializer.Deserialize<Template>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -74,7 +74,7 @@ public class TemplatesResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync($"/verify/templates/{id}/unpublish", new { }, cancellationToken);
+        var doc = await _client.PostAsync($"/verify/templates/{Uri.EscapeDataString(id)}/unpublish", new { }, cancellationToken);
         return JsonSerializer.Deserialize<Template>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -82,7 +82,7 @@ public class TemplatesResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync($"/templates/{id}/clone", new { }, cancellationToken);
+        var doc = await _client.PostAsync($"/templates/{Uri.EscapeDataString(id)}/clone", new { }, cancellationToken);
         return JsonSerializer.Deserialize<Template>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -91,7 +91,7 @@ public class TemplatesResource
         string name,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync($"/templates/{id}/clone", new { name }, cancellationToken);
+        var doc = await _client.PostAsync($"/templates/{Uri.EscapeDataString(id)}/clone", new { name }, cancellationToken);
         return JsonSerializer.Deserialize<Template>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 

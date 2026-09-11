@@ -313,7 +313,7 @@ public partial class MessagesResource
         if (string.IsNullOrEmpty(id))
             throw new ValidationException("Message ID is required");
 
-        using var response = await _client.GetAsync($"/messages/{id}", null, cancellationToken);
+        using var response = await _client.GetAsync($"/messages/{Uri.EscapeDataString(id)}", null, cancellationToken);
         var root = response.RootElement;
 
         JsonElement data;

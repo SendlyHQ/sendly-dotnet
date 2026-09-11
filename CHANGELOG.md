@@ -1,6 +1,41 @@
 # Sendly (.NET)
 
-## Unreleased
+## 4.0.0
+
+### Major Changes
+
+- Every Sendly SDK, the CLI and the MCP server now share one version. No public API was removed or changed in this package; the major aligns the fleet and carries the behaviour change below.
+
+### Security
+
+- **Path parameters are percent-encoded.** Every id you pass is now encoded (`Uri.EscapeDataString`) before it goes into the request path. An id containing `/`, `?` or `#` used to change which endpoint the request reached: an id of `../../account/keys` left its collection and hit another endpoint carrying your API key. Ordinary ids are sent byte-for-byte as before.
+
+## 3.40.0
+
+### Minor Changes
+
+- **Lifecycle webhook payloads are now reachable.** `Webhooks.ParseEvent` built a `WebhookMessageData` out of every `data.object`, which is right for `message.*` and wrong for every other event. `rcs_brand.*`, `rcs_agent.*`, `whatsapp_account.*`, `whatsapp_template.*`, `call.*`, `brand.*`, `campaign.*`, `assignment.*`, `number.*`, `port*`, `conversation.*`, `draft.*`, `contact.*` and `verification.*` carry a different object entirely, and because the message view is filled property by property from keys those payloads do not have, `WebhookEvent.Data` came back at its defaults — `Id` empty, `Segments` 1, `Direction` `"outbound"` — and nothing was thrown. Where a key name happened to coincide, such as `id` or `status`, it was worse than empty: it bound another record's value. An integration looked healthy while silently dropping `agent_id` and `stage`. `WebhookEvent` gains two accessors, both populated for every event type, `message.*` included:
+  - `RawObject` — `data.object` as a `JsonElement`, exactly as it arrived.
+  - `ObjectAs<T>(JsonSerializerOptions? options = null)` — deserializes `data.object` into a type you declare.
+
+  `Data` is unchanged and still holds the message for `message.*` events, so existing message handlers keep working. `ParseEvent` always sets `RawObject`, so `ObjectAs<T>()` throws `InvalidOperationException` only on a `WebhookEvent` you constructed yourself. The README's new "Receiving events" section under **Webhooks** works an `rcs_agent.live` handler end to end.
+
+- **`Webhook.EventTypes` now names every event the API emits.** Twenty-nine constants were missing, so there was no typed way to subscribe to RCS, WhatsApp, voice, verification, conversation or draft events: `message.read`, `message.opt_in`, `message.opt_out`, the six `verification.*`, `conversation.created` / `conversation.updated`, the three `draft.*`, `rcs_brand.verified` / `rcs_brand.failed`, the four `rcs_agent.*`, `whatsapp_account.connected` / `whatsapp_account.failed`, the three `whatsapp_template.*`, and `call.started` / `call.completed` / `call.recording.ready`. `scripts/check-webhook-event-parity.mjs` now diffs the list against the server's in CI, so it cannot drift again. Nothing was renamed or removed; the constants you already use are untouched.
+
+### Patch Changes
+
+- **A response that is not JSON now throws a `SendlyException` instead of a bare `JsonException`.** On the success path the body went straight into `JsonDocument.Parse`, so a `BaseUrl` pointing at the origin rather than `https://sendly.live/api/v1`, or a proxy or security product answering in the API's place, surfaced as an unexplained JSON parse error. The exception now names both likely causes, carries the HTTP status, and quotes the first 200 characters of the body, which makes an intercepted request readable from the message alone. The error path already fell back to the raw body and is unchanged.
+- **The `User-Agent` reported the wrong version.** The client sent `sendly-dotnet/3.37.1` from 3.37.1 through 3.39.0, because the release script updated the csproj but not the `SendlyClient.Version` constant it is built from. Both move together now and 3.40.0 reports `sendly-dotnet/3.40.0`. Nothing in the API keys off this header, so the effect was confined to your own request logs.
+
+### Worth knowing before you upgrade
+
+Nothing was removed, renamed or deprecated, and no existing call changes behaviour. Three things can still catch you out:
+
+- `ObjectAs<T>()` uses the `System.Text.Json` defaults, which apply no naming policy, so a property named `AgentId` does not bind to the wire's `agent_id`. Mark each field with `[JsonPropertyName]`, or pass your own `JsonSerializerOptions`. It also deserializes rather than validates: a field the payload never carried comes back at its default, which is the same silence this release set out to remove, so check the fields you depend on. `WebhookVerificationData` ships with the SDK and already carries the right attributes for `verification.*` events.
+- `WebhookEvent.Data` is still populated for lifecycle events, at defaults, because emptying it would be a breaking change. On `contact.auto_flagged` that is actively misleading: `data.object` is a contact, so `Data.Id` holds the **contact** id and a handler keyed on it acts on the wrong record (the contact's own id, not the `message_id` the payload also carries). Read lifecycle payloads through `RawObject` or `ObjectAs<T>()`.
+- `message.queued` and `message.undelivered` have never been emitted by the API and are rejected with a 400 on subscribe. `Webhook.EventTypes` has never listed them, so there is nothing to migrate off here, but drop them from any `Events` list you build out of raw strings.
+
+## 3.39.0
 
 ### Minor Changes
 

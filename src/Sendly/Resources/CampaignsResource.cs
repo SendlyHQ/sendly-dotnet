@@ -32,7 +32,7 @@ public class CampaignsResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.GetAsync($"/campaigns/{id}", null, cancellationToken);
+        var doc = await _client.GetAsync($"/campaigns/{Uri.EscapeDataString(id)}", null, cancellationToken);
         return JsonSerializer.Deserialize<Campaign>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -49,7 +49,7 @@ public class CampaignsResource
         UpdateCampaignRequest request,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PatchAsync($"/campaigns/{id}", request, cancellationToken);
+        var doc = await _client.PatchAsync($"/campaigns/{Uri.EscapeDataString(id)}", request, cancellationToken);
         return JsonSerializer.Deserialize<Campaign>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -57,14 +57,14 @@ public class CampaignsResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        await _client.DeleteAsync($"/campaigns/{id}", cancellationToken);
+        await _client.DeleteAsync($"/campaigns/{Uri.EscapeDataString(id)}", cancellationToken);
     }
 
     public async Task<CampaignPreview> PreviewAsync(
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.GetAsync($"/campaigns/{id}/preview", null, cancellationToken);
+        var doc = await _client.GetAsync($"/campaigns/{Uri.EscapeDataString(id)}/preview", null, cancellationToken);
         return JsonSerializer.Deserialize<CampaignPreview>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -72,7 +72,7 @@ public class CampaignsResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync($"/campaigns/{id}/send", new { }, cancellationToken);
+        var doc = await _client.PostAsync($"/campaigns/{Uri.EscapeDataString(id)}/send", new { }, cancellationToken);
         return JsonSerializer.Deserialize<Campaign>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -81,7 +81,7 @@ public class CampaignsResource
         ScheduleCampaignRequest request,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync($"/campaigns/{id}/schedule", request, cancellationToken);
+        var doc = await _client.PostAsync($"/campaigns/{Uri.EscapeDataString(id)}/schedule", request, cancellationToken);
         return JsonSerializer.Deserialize<Campaign>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -89,7 +89,7 @@ public class CampaignsResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync($"/campaigns/{id}/cancel", new { }, cancellationToken);
+        var doc = await _client.PostAsync($"/campaigns/{Uri.EscapeDataString(id)}/cancel", new { }, cancellationToken);
         return JsonSerializer.Deserialize<Campaign>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -97,7 +97,7 @@ public class CampaignsResource
         string id,
         CancellationToken cancellationToken = default)
     {
-        var doc = await _client.PostAsync($"/campaigns/{id}/clone", new { }, cancellationToken);
+        var doc = await _client.PostAsync($"/campaigns/{Uri.EscapeDataString(id)}/clone", new { }, cancellationToken);
         return JsonSerializer.Deserialize<Campaign>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 }
