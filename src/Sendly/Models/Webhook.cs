@@ -68,6 +68,10 @@ public class Webhook
         public const string CallStarted = "call.started";
         public const string CallCompleted = "call.completed";
         public const string CallRecordingReady = "call.recording.ready";
+        public const string ShortCodeActionRequired = "short_code.action_required";
+        public const string ShortCodeRejected = "short_code.rejected";
+        public const string ShortCodeFiled = "short_code.filed";
+        public const string ShortCodeLive = "short_code.live";
     }
 
     /// <summary>
