@@ -1,5 +1,21 @@
 # Sendly (.NET)
 
+## Unreleased
+
+### Minor Changes
+
+- **Voice calls on `client.Calls`.** Place a phone call handled by one of your AI agents, list and inspect calls, end a call, and download its recording. Five new operations: `Calls.CreateAsync(CreateCallRequest, IdempotentRequestOptions?)`, `Calls.ListAsync(ListCallsOptions?)`, `Calls.GetAsync(id)`, `Calls.HangupAsync(id, IdempotentRequestOptions?)` and `Calls.RecordingAsync(id)`. Both writes take an optional `IdempotentRequestOptions` and get an automatic `Idempotency-Key`, as elsewhere; ids are percent-encoded in the path. Reads need an API key with the `calls:read` scope, writes `calls:write` and a live key (`403 live_key_required` on a test key). Every operation answers 404 (`voice_not_enabled`, a `NotFoundException`) until voice is enabled for your workspace.
+
+  `GetAsync` returns the transcript for agent-handled calls (`Call.Transcript`, a list of `CallTranscriptLine`; null for other calls). `RecordingAsync` returns a `CallRecording` whose `Url` and `ExpiresAt` are set only while `Status` is `ready`; the link is signed and valid for five minutes.
+
+  New types in `Sendly.Resources`: `Call`, `CallTranscriptLine`, `CreateCallRequest`, `ListCallsOptions`, `CallListResponse` (with `CallListPagination`), `CallRecording`, and the string-constant classes `CallStatus`, `CallDirection`, `CallKind`, `CallHandledBy`, `CallBilling`, `CallRecordingStatus`, `CallHangupClass` and `CallErrorCode`. The README's new **Voice Calls** section covers pricing, the dashboard prerequisites and each refusal code.
+
+- **`OwnedNumber.VoiceEnabled` and `OwnedNumber.VoiceMode`** on `Numbers.ListAsync()` items, so you can find a number to call from: `VoiceMode` is `none`, `ring_dashboard` or `agent`. Both are null where the API omits them.
+
+### Not changed in this release
+
+- No public members were deprecated, renamed or removed.
+
 ## 4.0.0
 
 ### Major Changes

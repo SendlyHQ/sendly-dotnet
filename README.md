@@ -667,6 +667,79 @@ await client.Messages.SendAsync(new SendRcsMessageRequest(
 ));
 ```
 
+## Voice Calls
+
+Place phone calls handled by your AI agents, list and inspect calls, end a
+call, and download recordings. Over the API a call is always answered by one
+of your agents (configured in the dashboard under Calls → Agents); the agent
+speaks first and follows any `Context` you attach. Reads need an API key with
+the `calls:read` scope, writes `calls:write` and a live key.
+
+Calls are prepaid from your credit balance per started minute: an agent-handled
+outbound call costs 10 credits a minute ($0.10), inbound calls 2 to 3 credits
+plus 8 for the agent, and unanswered calls cost nothing. Destinations are US
+and Canada. The number you call from must have voice enabled and an emergency
+address registered in the dashboard (Calls → Settings); find one with
+`client.Numbers.ListAsync()` and check `VoiceEnabled`.
+
+> **Note:** Voice is being enabled workspace by workspace. Until it is on for
+> yours, every `client.Calls` call throws `NotFoundException` (`ApiErrorCode`
+> `voice_not_enabled`).
+
+```csharp
+using Sendly.Resources;
+
+// Place a call handled by an agent
+var call = await client.Calls.CreateAsync(new CreateCallRequest
+{
+    To = "+15555550123",
+    AgentId = "3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b",
+    From = "+15555550188",                        // optional with one voice-enabled number
+    Context = "You are calling Jordan to confirm the 3pm appointment on Tuesday.",
+    Metadata = new() { ["crmId"] = "lead_8812" }, // echoed on every read and webhook
+});
+Console.WriteLine($"{call.Id} {call.Status}"); // "... ringing"
+
+// List calls, newest first
+var calls = await client.Calls.ListAsync(new ListCallsOptions
+{
+    Status = CallStatus.Completed,
+    Direction = CallDirection.Outbound,
+    Limit = 20,
+});
+foreach (var c in calls.Data)
+    Console.WriteLine($"{c.From} -> {c.To} {c.DurationSecs}s {c.CreditsCharged} credits ({c.HangupClass})");
+if (calls.Pagination.HasMore)
+    Console.WriteLine($"{calls.Pagination.Total - calls.Data.Count} more");
+
+// Get one call; agent calls include the transcript
+call = await client.Calls.GetAsync(call.Id);
+foreach (var line in call.Transcript ?? new())
+    Console.WriteLine($"[{line.AtMs}ms] {line.Speaker}: {line.Text}");
+
+// End a call early (ringing -> cancelled, active -> completed)
+call = await client.Calls.HangupAsync(call.Id);
+
+// Download the recording (signed URL, valid for five minutes)
+var recording = await client.Calls.RecordingAsync(call.Id);
+if (recording.Status == CallRecordingStatus.Ready)
+    Console.WriteLine($"{recording.Url} until {recording.ExpiresAt}"); // audio/ogg
+```
+
+Refusals arrive as the usual exceptions with `ApiErrorCode` set: `402`
+`InsufficientCreditsException` (`insufficient_credits`, the balance cannot cover
+one minute), `428` `SendlyException` (`e911_required`, register an emergency
+address), `409` `SendlyException` (`lines_busy`, retry shortly;
+`agent_disabled`; `no_voice_number`), `400` `ValidationException`
+(`agent_required`, `from_number_required`, `invalid_metadata`,
+`destination_not_supported`), `404` `NotFoundException` (`agent_not_found`,
+`number_not_found`, `call_not_found`), `403` `SendlyException`
+(`live_key_required`) and `429` `RateLimitException` (`daily_call_limit`). The
+constants live on `CallErrorCode`; statuses and hangup reasons on `CallStatus`
+and `CallHangupClass`. `call.started`, `call.completed` and
+`call.recording.ready` webhooks carry the same object in snake_case, including
+`billing` and your `metadata`.
+
 ## Webhooks
 
 ```csharp

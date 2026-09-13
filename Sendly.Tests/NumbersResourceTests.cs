@@ -191,6 +191,46 @@ public class NumbersResourceTests : IDisposable
     }
 
     [Fact]
+    public async Task ListAsync_MapsVoiceFields()
+    {
+        // Arrange
+        var responseJson = @"{
+            ""numbers"": [
+                {
+                    ""id"": ""num_voice"",
+                    ""phoneNumber"": ""+15555550188"",
+                    ""status"": ""active"",
+                    ""source"": ""purchased"",
+                    ""countryCode"": ""US"",
+                    ""phoneNumberType"": ""local"",
+                    ""monthlyCostCents"": 200,
+                    ""voiceEnabled"": true,
+                    ""voiceMode"": ""agent""
+                },
+                {
+                    ""id"": ""num_sms"",
+                    ""phoneNumber"": ""+15555550199"",
+                    ""status"": ""active"",
+                    ""source"": ""purchased"",
+                    ""countryCode"": ""US"",
+                    ""phoneNumberType"": ""toll_free"",
+                    ""monthlyCostCents"": 110
+                }
+            ]
+        }";
+        _mockHandler.QueueSuccessResponse(responseJson);
+
+        // Act
+        var result = await _client.Numbers.ListAsync();
+
+        // Assert
+        Assert.True(result.Numbers[0].VoiceEnabled);
+        Assert.Equal("agent", result.Numbers[0].VoiceMode);
+        Assert.Null(result.Numbers[1].VoiceEnabled);
+        Assert.Null(result.Numbers[1].VoiceMode);
+    }
+
+    [Fact]
     public async Task ListAsync_With401Response_ThrowsAuthenticationException()
     {
         // Arrange

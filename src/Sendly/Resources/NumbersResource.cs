@@ -321,6 +321,22 @@ public class OwnedNumber
     /// <summary>When the number is scheduled to be released (ISO-8601), or null.</summary>
     [JsonPropertyName("scheduledReleaseAt")]
     public string? ScheduledReleaseAt { get; set; }
+
+    /// <summary>
+    /// True if the number can take and place phone calls, so it can be the
+    /// <c>From</c> of <see cref="CallsResource.CreateAsync"/>. Included by the
+    /// list endpoint; null where the API omits it.
+    /// </summary>
+    [JsonPropertyName("voiceEnabled")]
+    public bool? VoiceEnabled { get; set; }
+
+    /// <summary>
+    /// How the number answers: <c>none</c>, <c>ring_dashboard</c> (the team
+    /// answers in the dashboard) or <c>agent</c> (an AI agent answers). Null
+    /// where the API omits it.
+    /// </summary>
+    [JsonPropertyName("voiceMode")]
+    public string? VoiceMode { get; set; }
 }
 
 public class OwnedNumbersResponse

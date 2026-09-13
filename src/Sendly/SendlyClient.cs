@@ -132,6 +132,12 @@ public class SendlyClient : IDisposable
     public RcsResource Rcs { get; }
 
     /// <summary>
+    /// Gets the Calls resource: place phone calls handled by your AI agents,
+    /// list and inspect calls, end a call, and download recordings.
+    /// </summary>
+    public CallsResource Calls { get; }
+
+    /// <summary>
     /// Creates a new Sendly client.
     /// </summary>
     /// <param name="apiKey">Your Sendly API key</param>
@@ -186,6 +192,7 @@ public class SendlyClient : IDisposable
         Links = new LinksResource(this);
         WhatsApp = new WhatsAppResource(this);
         Rcs = new RcsResource(this);
+        Calls = new CallsResource(this);
     }
 
     /// <summary>
