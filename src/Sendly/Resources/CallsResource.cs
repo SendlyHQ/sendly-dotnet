@@ -10,11 +10,11 @@ namespace Sendly.Resources;
 ///
 /// A workspace phone number with voice enabled can take and place phone
 /// calls. Over the API a call is always handled by one of your AI agents (a
-/// receptionist you configure in the dashboard under Calls → Agents); the
-/// agent speaks first and follows any <c>Context</c> you attach. Switching
-/// voice on for a number, choosing how it answers, registering its emergency
-/// address and creating agents are done in the dashboard; use
-/// <c>client.Numbers.ListAsync()</c> to find a number with voice enabled.
+/// receptionist you create with <c>client.Voice.Agents</c> or in the dashboard
+/// under Calls → Agents); the agent speaks first and follows any
+/// <c>Context</c> you attach. Switch voice on for a number, choose how it
+/// answers and register its emergency address with <c>client.Voice.Numbers</c>,
+/// which also lists your numbers with their voice settings.
 ///
 /// Calls are prepaid from the workspace balance per started minute: an
 /// agent-handled outbound call costs 10 credits a minute ($0.10). Unanswered
@@ -163,7 +163,8 @@ public class CallsResource
     /// <see cref="CallRecording.Url"/> is a signed download link valid for
     /// five minutes (<see cref="CallRecording.ExpiresAt"/>) and is null unless
     /// <see cref="CallRecording.Status"/> is <c>ready</c>. Recordings are
-    /// Ogg/Opus; agent calls are dual-channel (caller left, agent right).
+    /// Ogg/Opus; agent calls are dual-channel, with the agent on the left
+    /// channel and the other party on the right.
     /// Recording is switched on per workspace in the dashboard under
     /// Calls → Settings.
     /// </summary>

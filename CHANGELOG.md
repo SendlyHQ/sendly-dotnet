@@ -1,5 +1,28 @@
 # Sendly (.NET)
 
+## 4.2.0
+
+### Minor Changes
+
+- **Configure voice from code on `client.Voice`.** Everything a call depends on used to be dashboard-only; it is now on three sub-resources:
+  - `Voice.Numbers.ListAsync()`, `GetAsync(number)`, `UpdateAsync(number, UpdateVoiceNumberRequest, IdempotentRequestOptions?)` and `RegisterEmergencyAddressAsync(number, EmergencyAddress, IdempotentRequestOptions?)`. `number` is the number's id or its E.164 phone number, percent-encoded in the path (`+15555550188` is sent as `%2B15555550188`). `UpdateAsync` switches voice on or off and chooses how the number answers (`VoiceMode.None`, `VoiceMode.RingDashboard` or `VoiceMode.Agent` with `AgentId`); this changes how real phone calls to the number are answered. An emergency address is required before a US or Canadian number can place calls, and the first registration adds $1.50 a month to the number.
+  - `Voice.Agents.ListAsync()`, `CreateAsync(CreateVoiceAgentRequest, IdempotentRequestOptions?)`, `GetAsync(id)`, `UpdateAsync(id, UpdateVoiceAgentRequest, IdempotentRequestOptions?)` and `DeleteAsync(id, IdempotentRequestOptions?)`. An agent answers real callers on any number pointed at it. Each agent holds its own scoped sending key (`VoiceAgent.CanSendSms`), a workspace can have 20 agents (409 `agent_limit`), and an agent that still answers a number can't be deleted (409 `agent_in_use`).
+  - `Voice.Voices.ListAsync()` lists the voices an agent can speak with.
+
+  Reads need the `calls:read` scope and writes `calls:write` with a live key. POSTs get an automatic `Idempotency-Key`; `UpdateAsync` and `DeleteAsync` send one only when you pass `IdempotentRequestOptions`. In a team workspace, number and emergency-address writes also need a role that can change settings and agent writes a role that can manage API keys (403 `forbidden`). Every operation answers 404 (`voice_not_enabled`, a `NotFoundException`) until voice is enabled for your workspace.
+
+  New types in `Sendly.Resources`: `VoiceResource`, `VoiceNumbersResource`, `VoiceAgentsResource`, `VoiceVoicesResource`, `VoiceNumber`, `VoiceNumberListResponse`, `VoiceNumberEmergencyAddress`, `EmergencyAddress`, `VoiceNumberRates`, `UpdateVoiceNumberRequest`, `VoiceAgent`, `VoiceAgentListResponse`, `VoiceAgentTools`, `VoiceAgentToolsInput`, `CreateVoiceAgentRequest`, `UpdateVoiceAgentRequest`, `DeletedVoiceAgent`, `Voice`, `VoiceListResponse`, and the string-constant class `VoiceMode`. `CallErrorCode` gains `AgentInUse`, `AgentLimit`, `InvalidVoiceMode`, `InvalidAddress`, `E911NotApplicable`, `VoiceAttachFailed`, `CarrierRefused` and `VoiceUnavailable`. The README's **Voice Calls** section has a new **Configure voice** subsection.
+
+- **`SendlyException.ResponseBody`** holds the JSON object an error response carried, so fields beyond `error` and `message` are reachable: the `numbers` a 409 `agent_in_use` lists, and the `suggested` address (or null) on a 422 `invalid_address`. It is null when the error did not come from a JSON object response.
+
+### Patch Changes
+
+- **Recording channels were documented the wrong way round.** `Calls.RecordingAsync` and `CallRecording.ContentType` said an agent call's recording had the caller on the left channel and the agent on the right. The agent is on the left channel and the other party on the right.
+
+### Not changed in this release
+
+- No public members were deprecated, renamed or removed.
+
 ## 4.1.0
 
 ### Minor Changes

@@ -138,6 +138,24 @@ public class SendlyClient : IDisposable
     public CallsResource Calls { get; }
 
     /// <summary>
+    /// Gets the Voice resource: switch voice on for your numbers and choose
+    /// how they answer, register emergency addresses, and manage the AI
+    /// agents that talk on calls and the voices they speak with.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var agent = await client.Voice.Agents.CreateAsync(new CreateVoiceAgentRequest { Name = "Front desk" });
+    /// await client.Voice.Numbers.UpdateAsync("+15555550188", new UpdateVoiceNumberRequest
+    /// {
+    ///     VoiceEnabled = true,
+    ///     VoiceMode = VoiceMode.Agent,
+    ///     AgentId = agent.Id,
+    /// });
+    /// </code>
+    /// </example>
+    public VoiceResource Voice { get; }
+
+    /// <summary>
     /// Creates a new Sendly client.
     /// </summary>
     /// <param name="apiKey">Your Sendly API key</param>
@@ -193,6 +211,7 @@ public class SendlyClient : IDisposable
         WhatsApp = new WhatsAppResource(this);
         Rcs = new RcsResource(this);
         Calls = new CallsResource(this);
+        Voice = new VoiceResource(this);
     }
 
     /// <summary>
@@ -354,6 +373,28 @@ public class SendlyClient : IDisposable
             cancellationToken);
     }
 
+    /// <summary>
+    /// Makes a DELETE request carrying a caller-supplied Idempotency-Key, on
+    /// the same terms as <see cref="PatchAsync{T}(string, T, string?, CancellationToken)"/>.
+    /// </summary>
+    internal async Task<JsonDocument> DeleteAsync(string path, string? idempotencyKey, CancellationToken cancellationToken = default)
+    {
+        var normalizedPath = NormalizePath(path);
+        var explicitKey = NormalizeIdempotencyKey(idempotencyKey);
+
+        return await ExecuteWithRetryAsync(
+            key =>
+            {
+                var request = new HttpRequestMessage(HttpMethod.Delete, normalizedPath);
+                if (key != null)
+                    request.Headers.Add("Idempotency-Key", key);
+                return _httpClient.SendAsync(request, cancellationToken);
+            },
+            explicitKey,
+            rotateKeyOnServerError: false,
+            cancellationToken);
+    }
+
     private static string NormalizePath(string path)
     {
         return path.TrimStart('/');
@@ -508,12 +549,15 @@ public class SendlyClient : IDisposable
         JsonDocument? errorDoc = null;
         string message = "Unknown error";
         string? apiErrorCode = null;
+        JsonElement? responseBody = null;
         var fieldErrors = new List<SendlyFieldError>();
 
         try
         {
             errorDoc = JsonDocument.Parse(body);
             var root = errorDoc.RootElement;
+            if (root.ValueKind == JsonValueKind.Object)
+                responseBody = root.Clone();
             if (root.TryGetProperty("error", out var errProp) && errProp.ValueKind == JsonValueKind.String)
                 apiErrorCode = errProp.GetString();
             if (root.TryGetProperty("message", out var msgProp) && msgProp.ValueKind == JsonValueKind.String)
@@ -555,6 +599,7 @@ public class SendlyClient : IDisposable
         };
         exception.ApiErrorCode = apiErrorCode;
         exception.FieldErrors = fieldErrors;
+        exception.ResponseBody = responseBody;
         throw exception;
     }
 

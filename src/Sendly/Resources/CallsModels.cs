@@ -207,7 +207,7 @@ public static class CallErrorCode
     /// <summary>404: calls to phone numbers are not enabled for the workspace yet.</summary>
     public const string OutboundCallsNotEnabled = "outbound_calls_not_enabled";
 
-    /// <summary>400: calls placed over the API are answered by an AI agent; pass <c>AgentId</c>.</summary>
+    /// <summary>400: calls placed over the API are answered by an AI agent, and a number in <c>agent</c> mode needs one; pass <c>AgentId</c>.</summary>
     public const string AgentRequired = "agent_required";
 
     /// <summary>404: the agent does not exist in the workspace.</summary>
@@ -225,7 +225,7 @@ public static class CallErrorCode
     /// <summary>409: no number in the workspace has voice enabled.</summary>
     public const string NoVoiceNumber = "no_voice_number";
 
-    /// <summary>404: <c>From</c> is not a number in the workspace.</summary>
+    /// <summary>404: <c>From</c>, or the number passed to <c>client.Voice.Numbers</c>, is not an active number in the workspace.</summary>
     public const string NumberNotFound = "number_not_found";
 
     /// <summary>400: only US and Canadian numbers can be called.</summary>
@@ -248,6 +248,34 @@ public static class CallErrorCode
 
     /// <summary>500: something went wrong on Sendly's side.</summary>
     public const string VoiceInternalError = "voice_internal_error";
+
+    /// <summary>503: voice is temporarily unavailable.</summary>
+    public const string VoiceUnavailable = "voice_unavailable";
+
+    /// <summary>409: the agent still answers one or more numbers; point them elsewhere before deleting it.</summary>
+    public const string AgentInUse = "agent_in_use";
+
+    /// <summary>409: the workspace already has the maximum of 20 agents.</summary>
+    public const string AgentLimit = "agent_limit";
+
+    /// <summary>400: <c>VoiceMode</c> is not <c>none</c>, <c>ring_dashboard</c> or <c>agent</c>.</summary>
+    public const string InvalidVoiceMode = "invalid_voice_mode";
+
+    /// <summary>400: an emergency address field is missing or malformed; 422: the address couldn't be validated.</summary>
+    public const string InvalidAddress = "invalid_address";
+
+    /// <summary>400: emergency addresses apply only to US and Canadian numbers.</summary>
+    public const string E911NotApplicable = "e911_not_applicable";
+
+    /// <summary>502: voice couldn't be switched on for the number; try again.</summary>
+    public const string VoiceAttachFailed = "voice_attach_failed";
+
+    /// <summary>
+    /// 502: the emergency address registration was refused. Permanent when the
+    /// message says the number couldn't be found for emergency registration
+    /// (contact support); otherwise try again later.
+    /// </summary>
+    public const string CarrierRefused = "carrier_refused";
 }
 
 /// <summary>
@@ -503,7 +531,7 @@ public class CallRecording
     [JsonPropertyName("expiresAt")]
     public DateTime? ExpiresAt { get; set; }
 
-    /// <summary><c>audio/ogg</c> when ready, else null. Agent calls are recorded dual-channel: caller left, agent right.</summary>
+    /// <summary><c>audio/ogg</c> when ready, else null. Agent calls are recorded dual-channel: the agent on the left channel, the other party on the right.</summary>
     [JsonPropertyName("contentType")]
     public string? ContentType { get; set; }
 }

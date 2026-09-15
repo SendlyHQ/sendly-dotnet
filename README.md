@@ -275,9 +275,10 @@ original response, and reusing it with a different body is rejected with a
 `422`, so derive keys from something stable in your domain, like an order id.
 `SendBatchAsync` sends no automatic key, because the API already deduplicates
 identical batches by their contents. The RCS registration writes
-(`client.Rcs.Brands` and `client.Rcs.Agents`) take an optional
-`IdempotentRequestOptions` too; their `PATCH` and `PUT` calls send a key only
-when you supply one.
+(`client.Rcs.Brands` and `client.Rcs.Agents`) and the voice writes
+(`client.Calls` and `client.Voice`) take an optional `IdempotentRequestOptions`
+too; their `PATCH`, `PUT` and `DELETE` calls send a key only when you supply
+one.
 
 ```csharp
 var message = await client.Messages.SendAsync(
@@ -671,20 +672,21 @@ await client.Messages.SendAsync(new SendRcsMessageRequest(
 
 Place phone calls handled by your AI agents, list and inspect calls, end a
 call, and download recordings. Over the API a call is always answered by one
-of your agents (configured in the dashboard under Calls → Agents); the agent
-speaks first and follows any `Context` you attach. Reads need an API key with
-the `calls:read` scope, writes `calls:write` and a live key.
+of your agents (created with `client.Voice.Agents` or in the dashboard under
+Calls → Agents); the agent speaks first and follows any `Context` you attach.
+Reads need an API key with the `calls:read` scope, writes `calls:write` and a
+live key.
 
 Calls are prepaid from your credit balance per started minute: an agent-handled
 outbound call costs 10 credits a minute ($0.10), inbound calls 2 to 3 credits
 plus 8 for the agent, and unanswered calls cost nothing. Destinations are US
 and Canada. The number you call from must have voice enabled and an emergency
-address registered in the dashboard (Calls → Settings); find one with
-`client.Numbers.ListAsync()` and check `VoiceEnabled`.
+address registered; see [Configure voice](#configure-voice) to do both from
+code.
 
 > **Note:** Voice is being enabled workspace by workspace. Until it is on for
-> yours, every `client.Calls` call throws `NotFoundException` (`ApiErrorCode`
-> `voice_not_enabled`).
+> yours, every `client.Calls` and `client.Voice` call throws
+> `NotFoundException` (`ApiErrorCode` `voice_not_enabled`).
 
 ```csharp
 using Sendly.Resources;
@@ -739,6 +741,122 @@ constants live on `CallErrorCode`; statuses and hangup reasons on `CallStatus`
 and `CallHangupClass`. `call.started`, `call.completed` and
 `call.recording.ready` webhooks carry the same object in snake_case, including
 `billing` and your `metadata`.
+
+### Configure voice
+
+`client.Voice` configures everything a call depends on: which numbers take
+calls and how they answer, each number's emergency address, and the AI agents
+themselves. Reads need `calls:read` and writes `calls:write` with a live key.
+In a team workspace, number and emergency-address writes also need a role that
+can change settings, and agent writes a role that can manage API keys (each
+agent holds its own scoped sending key); otherwise the API answers `403`
+`forbidden`. A `number` is the number's id or its E.164 phone number.
+
+Switching voice on for a number changes how real phone calls to it are
+answered, and an agent answers real callers on every number pointed at it. A
+US or Canadian number needs an emergency address before it can place calls;
+the first registration adds $1.50 a month to the number, and registering again
+replaces the address without charging twice.
+
+```csharp
+using Sendly.Resources;
+
+// Numbers and how they answer
+var numbers = await client.Voice.Numbers.ListAsync();
+foreach (var n in numbers.Data)
+    Console.WriteLine($"{n.PhoneNumber} {n.VoiceMode} {n.EmergencyAddress?.Status ?? "no emergency address"}");
+
+var number = await client.Voice.Numbers.GetAsync("+15555550188");
+Console.WriteLine($"{number.RatePerMinute.Outbound} credits a minute outbound");
+
+// Register the emergency address (Country defaults to US)
+number = await client.Voice.Numbers.RegisterEmergencyAddressAsync("+15555550188", new EmergencyAddress
+{
+    Street = "500 Example Ave",
+    Unit = "Suite 2",
+    City = "Austin",
+    State = "TX",
+    Zip = "78701",
+});
+Console.WriteLine(number.EmergencyAddress!.Status); // "provisioning", then "active"
+
+// Voices, then an agent
+var voices = await client.Voice.Voices.ListAsync();
+var agent = await client.Voice.Agents.CreateAsync(new CreateVoiceAgentRequest
+{
+    Name = "Front desk",
+    Voice = voices.Data[0].Id,
+    Greeting = "Thanks for calling Acme, how can I help?",
+    Instructions = "Answer questions about opening hours and take a message for anything else.",
+    Tools = new VoiceAgentToolsInput { SendSms = true },
+});
+
+// Have the agent answer the number
+number = await client.Voice.Numbers.UpdateAsync("+15555550188", new UpdateVoiceNumberRequest
+{
+    VoiceEnabled = true,
+    VoiceMode = VoiceMode.Agent,
+    AgentId = agent.Id,
+});
+
+// Change an agent (only the properties you set are sent)
+agent = await client.Voice.Agents.UpdateAsync(agent.Id, new UpdateVoiceAgentRequest
+{
+    Greeting = "Thanks for calling Acme. How can I help today?",
+});
+
+// Ring the team instead, then delete the agent
+await client.Voice.Numbers.UpdateAsync("+15555550188", new UpdateVoiceNumberRequest
+{
+    VoiceMode = VoiceMode.RingDashboard,
+});
+var deleted = await client.Voice.Agents.DeleteAsync(agent.Id);
+Console.WriteLine(deleted.Deleted); // true
+```
+
+A mode alone is enough: `VoiceMode.RingDashboard` or `VoiceMode.Agent`
+switches voice on, so it can fail the way switching on does (`502`
+`voice_attach_failed`, `503` `voice_unavailable`), and `VoiceMode.None`
+switches it off. `VoiceEnabled = false` wins over any mode, and
+`VoiceMode.None` with `VoiceEnabled = true` becomes `ring_dashboard`. An empty
+`AgentId` clears the stored agent, and an empty `TransferTo` clears that tool.
+Agents cannot transfer calls yet: while `TransferTo` is set, a caller who asks
+for a person is told the message will be passed on, and the agent takes their
+name and number.
+
+Refusals carry `ApiErrorCode` as usual: `400` `ValidationException`
+(`invalid_request`, `invalid_voice_mode`, `agent_required`, `invalid_address`,
+`e911_not_applicable`), `404` `NotFoundException` (`number_not_found`,
+`agent_not_found`), `409` `SendlyException` (`agent_disabled`, `agent_limit`,
+`agent_in_use`), `422` `ValidationException` (`invalid_address`, the address
+couldn't be validated), `502` `SendlyException` (`voice_attach_failed`,
+`carrier_refused`) and `503` `SendlyException` (`voice_unavailable`). A `5xx`
+is thrown only after the client has already retried it on its own. Not every
+`carrier_refused` is worth retrying: when the message says the number couldn't
+be found for emergency registration, retrying won't help, so contact support;
+when it says the address couldn't be registered or emergency calling couldn't
+be switched on, try again later. A 422 is thrown as a `ValidationException` like a 400,
+so tell the two `invalid_address` refusals apart by the `suggested` field the
+422 carries. Extra fields are on `ResponseBody`:
+
+```csharp
+try
+{
+    await client.Voice.Agents.DeleteAsync(agent.Id);
+}
+catch (SendlyException e) when (e.ApiErrorCode == CallErrorCode.AgentInUse)
+{
+    foreach (var n in e.ResponseBody!.Value.GetProperty("numbers").EnumerateArray())
+        Console.WriteLine($"Still answering {n.GetString()}");
+}
+catch (ValidationException e) when (e.ApiErrorCode == CallErrorCode.InvalidAddress)
+{
+    if (e.ResponseBody is { } body && body.TryGetProperty("suggested", out var suggested))
+        Console.WriteLine($"Did you mean: {suggested}"); // 422: null when no correction was found
+    else
+        Console.WriteLine(e.Message);                    // 400: a field is missing or malformed
+}
+```
 
 ## Webhooks
 
@@ -991,7 +1109,9 @@ Every exception also carries the API's own `error` string as `ApiErrorCode`
 (for example `rcs_field_locked` and `rcs_launch_not_ready`, both 409s) and,
 when the response lists per-field problems, `FieldErrors` (`Path` + `Message`
 pairs such as `brand.ein: Enter a 9-digit EIN`). `ErrorCode` is unchanged and
-still holds the per-class constant.
+still holds the per-class constant. `ResponseBody` is the whole JSON object the
+API answered with (null when the error did not come from one), for refusals
+that carry more than a message, such as the `numbers` on a 409 `agent_in_use`.
 
 ## Message Object
 

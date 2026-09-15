@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Sendly.Exceptions;
 
 /// <summary>
@@ -30,6 +32,16 @@ public class SendlyException : Exception
     /// Empty otherwise.
     /// </summary>
     public IReadOnlyList<SendlyFieldError> FieldErrors { get; internal set; } = Array.Empty<SendlyFieldError>();
+
+    /// <summary>
+    /// The JSON object the API answered with, or null when the error did not
+    /// come from an API response (or the body was not a JSON object). Some
+    /// refusals carry more than <c>error</c> and <c>message</c>: a 409
+    /// <c>agent_in_use</c> lists the numbers the agent still answers under
+    /// <c>numbers</c>, and a 422 <c>invalid_address</c> carries a corrected
+    /// address (or null) under <c>suggested</c>.
+    /// </summary>
+    public JsonElement? ResponseBody { get; internal set; }
 
     /// <summary>
     /// Creates a new SendlyException.
