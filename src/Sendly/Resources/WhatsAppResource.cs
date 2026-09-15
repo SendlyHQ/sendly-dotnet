@@ -154,7 +154,7 @@ public class WhatsAppSignupResource
     /// Requires a live API key.
     /// </summary>
     /// <param name="phoneNumber">The number to connect, in E.164 format. Must be an
-    /// active number in your workspace (provisioned, purchased, or ported into Sendly).</param>
+    /// active number in your workspace (provisioned, purchased, or fully ported into Sendly).</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The signup with its <c>ConnectUrl</c></returns>
     public async Task<WhatsAppSignupSession> CreateAsync(
@@ -362,7 +362,7 @@ public class StartWhatsAppSignupRequest
 {
     /// <summary>
     /// The number to connect, in E.164 format. Must be an active number in
-    /// your workspace (provisioned, purchased, or ported into Sendly).
+    /// your workspace (provisioned, purchased, or fully ported into Sendly).
     /// </summary>
     [JsonPropertyName("phoneNumber")]
     public string PhoneNumber { get; set; } = string.Empty;
