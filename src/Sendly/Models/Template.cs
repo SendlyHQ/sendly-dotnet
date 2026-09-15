@@ -132,7 +132,7 @@ public class UpdateTemplateRequest
     /// <summary>
     /// Not sent. Publishing is a separate call.
     /// </summary>
-    [Obsolete("Publishing is a separate call, so this value is never sent. Use TemplatesResource.PublishAsync or TemplatesResource.UnpublishAsync.")]
+    [Obsolete("Publishing is a separate call, so this value is never sent. Use TemplatesResource.PublishAsync.")]
     [JsonIgnore]
     public bool? IsPublished { get; set; }
 }

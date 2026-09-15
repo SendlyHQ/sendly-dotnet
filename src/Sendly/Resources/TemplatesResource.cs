@@ -70,6 +70,7 @@ public class TemplatesResource
         return JsonSerializer.Deserialize<Template>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
+    [Obsolete("The API has no unpublish route, so this call fails with a 404. To retire a published template, create and publish a replacement, then delete this one.")]
     public async Task<Template> UnpublishAsync(
         string id,
         CancellationToken cancellationToken = default)
