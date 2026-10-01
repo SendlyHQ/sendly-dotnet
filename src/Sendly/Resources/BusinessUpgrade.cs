@@ -160,11 +160,9 @@ public class BusinessUpgradeResource
         DispositionRequest request,
         CancellationToken cancellationToken = default)
     {
-        var body = new
-        {
-            disposition = request.Disposition,
-            targetOrgId = request.TargetWorkspaceId,
-        };
+        var body = new Dictionary<string, object?> { ["disposition"] = request.Disposition };
+        if (request.TargetWorkspaceId != null)
+            body["targetOrgId"] = request.TargetWorkspaceId;
         var doc = await _client.PostAsync(
             $"/workspaces/{Uri.EscapeDataString(workspaceId)}/upgrade/disposition",
             body,

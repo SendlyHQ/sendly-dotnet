@@ -299,8 +299,24 @@ public class OwnedNumber
     [JsonPropertyName("phoneNumberType")]
     public string PhoneNumberType { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Monthly cost in cents, or 0 when the number has no recorded price
+    /// (such as the toll-free number provisioned with a verification).
+    /// <see cref="MonthlyCostCentsOrNull"/> tells the two apart.
+    /// </summary>
+    [JsonIgnore]
+    public int MonthlyCostCents
+    {
+        get => MonthlyCostCentsOrNull ?? 0;
+        set => MonthlyCostCentsOrNull = value;
+    }
+
+    /// <summary>
+    /// Monthly cost in cents as the API reported it, or null when the number
+    /// has no recorded price.
+    /// </summary>
     [JsonPropertyName("monthlyCostCents")]
-    public int MonthlyCostCents { get; set; }
+    public int? MonthlyCostCentsOrNull { get; set; }
 
     /// <summary>
     /// True if this is the workspace's default sending number. Included by

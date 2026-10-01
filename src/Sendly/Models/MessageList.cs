@@ -74,14 +74,14 @@ public class MessageList : IEnumerable<Message>
             Total = pagination.TryGetProperty("total", out var t) ? t.GetInt32() : messages.Count;
             Limit = pagination.TryGetProperty("limit", out var l) ? l.GetInt32() : 20;
             Offset = pagination.TryGetProperty("offset", out var o) ? o.GetInt32() : 0;
-            HasMore = pagination.TryGetProperty("has_more", out var h) && h.GetBoolean();
+            HasMore = (pagination.TryGetProperty("hasMore", out var h) || pagination.TryGetProperty("has_more", out h)) && h.GetBoolean();
         }
         else
         {
             Total = root.TryGetProperty("total", out var t) ? t.GetInt32() : messages.Count;
             Limit = root.TryGetProperty("limit", out var l) ? l.GetInt32() : 20;
             Offset = root.TryGetProperty("offset", out var o) ? o.GetInt32() : 0;
-            HasMore = root.TryGetProperty("has_more", out var h) && h.GetBoolean();
+            HasMore = (root.TryGetProperty("hasMore", out var h) || root.TryGetProperty("has_more", out h)) && h.GetBoolean();
         }
     }
 

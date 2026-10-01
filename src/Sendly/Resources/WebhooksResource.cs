@@ -124,11 +124,14 @@ public class WebhooksResource
     }
 
     /// <summary>
-    /// Tests a webhook endpoint.
+    /// Tests a webhook endpoint by sending it a <c>webhook.test</c> event.
+    /// When your endpoint does not accept the delivery, the API answers 400
+    /// and this throws a <see cref="ValidationException"/> carrying the API's
+    /// message.
     /// </summary>
     /// <param name="id">Webhook ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The test result</returns>
+    /// <returns>The test result: the endpoint's status code and response time</returns>
     public async Task<WebhookTestResult> TestAsync(string id, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(id))
@@ -188,9 +191,10 @@ public class WebhooksResource
     /// </summary>
     /// <remarks>
     /// Use when a circuit-breaker outage left events with no audit row (the
-    /// case <see cref="RedeliverAsync"/> cannot recover). Synthesized events
-    /// have fresh IDs; clients should dedupe by
-    /// <c>event.data.object.id</c> (the message ID). Rejects with HTTP 409
+    /// case <see cref="RedeliverAsync"/> cannot recover). Synthesized message
+    /// events carry the same event id the original dispatch used, so dedupe
+    /// on <c>event.id</c>. Do not dedupe on <c>data.object.id</c>: a
+    /// message's sent and delivered events share it. Rejects with HTTP 409
     /// if the circuit is currently open — call
     /// <see cref="ResetCircuitAsync"/> first.
     /// </remarks>

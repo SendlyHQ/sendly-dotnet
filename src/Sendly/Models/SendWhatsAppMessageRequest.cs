@@ -16,8 +16,9 @@ namespace Sendly.Models;
 /// - <see cref="Template"/> — an approved template; works regardless of the
 /// window
 ///
-/// WhatsApp sends require a live API key and a <see cref="From"/> number with
-/// an active WhatsApp connection (see <c>client.WhatsApp.Signup</c>).
+/// WhatsApp sends require the <c>sms:send</c> scope, a live API key and a
+/// <see cref="From"/> number with an active WhatsApp connection (see
+/// <c>client.WhatsApp.Signup</c>).
 /// </summary>
 public class SendWhatsAppMessageRequest
 {

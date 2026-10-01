@@ -128,6 +128,20 @@ public static class RcsErrorCode
 
     /// <summary>500 — something went wrong on Sendly's side; retry later.</summary>
     public const string InternalError = "rcs_internal_error";
+
+    /// <summary>
+    /// 429 from any endpoint — too many requests from this address used a
+    /// wrong API key, so keys are refused until <c>RetryAfter</c> has passed.
+    /// The client does not retry it; check the key.
+    /// </summary>
+    public const string TooManyFailedKeyAttempts = "too_many_failed_key_attempts";
+
+    /// <summary>
+    /// 429 from any endpoint — too many API key checks were already running
+    /// for the account from this address. Transient; the client retries it
+    /// after <c>RetryAfter</c> (1 second).
+    /// </summary>
+    public const string TooManyConcurrentVerifications = "too_many_concurrent_verifications";
 }
 
 /// <summary>

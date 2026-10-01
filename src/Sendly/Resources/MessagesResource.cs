@@ -84,13 +84,32 @@ public partial class MessagesResource
     /// <summary>
     /// Sends a WhatsApp message.
     ///
-    /// Requires a live API key and a <see cref="SendWhatsAppMessageRequest.From"/>
-    /// number with an active WhatsApp connection (see
-    /// <c>client.WhatsApp.Signup</c>). Free-form text and media only deliver
+    /// Requires the <c>sms:send</c> scope (not <c>whatsapp:write</c>), a live
+    /// API key and a <see cref="SendWhatsAppMessageRequest.From"/> number with
+    /// an active WhatsApp connection (see <c>client.WhatsApp.Signup</c>).
+    /// WhatsApp is enabled per person (the user who owns the API key, not the
+    /// workspace); while it is off the API responds 403
+    /// <c>whatsapp_not_enabled</c>. Free-form text and media only deliver
     /// inside an open 24-hour customer-service window — outside it, send an
     /// approved <see cref="SendWhatsAppMessageRequest.Template"/> instead
     /// (check with <c>client.WhatsApp.WindowAsync</c>).
     /// </summary>
+    /// <exception cref="ValidationException">
+    /// <c>whatsapp_send_failed</c> (422) when WhatsApp refused the message.
+    /// It is final and not retried, and the message wasn't charged. The API
+    /// caches it under the idempotency key and replays it for 24 hours.
+    /// </exception>
+    /// <exception cref="SendlyException">
+    /// <c>whatsapp_send_failed</c> (502) when the message provably never
+    /// reached the carrier, so it was not sent and is safe to send again. It
+    /// is never cached, so the client retries it like any 5xx under the same
+    /// idempotency key; the message wasn't charged.
+    /// <c>whatsapp_send_unconfirmed</c> (409) when the outcome is unknown: the
+    /// message was marked failed and refunded but may still be delivered, so
+    /// check before sending it again (it could arrive twice). It is not
+    /// retried automatically, and the API caches it under the idempotency
+    /// key. No send returns 503 <c>whatsapp_unavailable</c>.
+    /// </exception>
     /// <param name="request">WhatsApp message details (text, media with caption, or template)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The created WhatsApp message</returns>
@@ -353,10 +372,10 @@ public partial class MessagesResource
                 yield return message;
             }
 
-            if (!page.HasMore)
+            if (!page.HasMore || page.Count == 0)
                 break;
 
-            offset += batchSize;
+            offset += page.Count;
         }
     }
 
@@ -367,7 +386,7 @@ public partial class MessagesResource
     /// </summary>
     /// <param name="to">Recipient phone number in E.164 format</param>
     /// <param name="text">Message content</param>
-    /// <param name="scheduledAt">ISO 8601 datetime (must be at least 1 minute in the future)</param>
+    /// <param name="scheduledAt">ISO 8601 datetime, at least 5 minutes and at most 5 days in the future</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The scheduled message</returns>
     public async Task<ScheduledMessage> ScheduleAsync(string to, string text, string scheduledAt, CancellationToken cancellationToken = default)

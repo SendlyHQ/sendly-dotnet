@@ -76,7 +76,7 @@ public class MediaResource
             ?? new MediaFile();
     }
 
-    private static string GetContentType(string fileName)
+    internal static string GetContentType(string fileName)
     {
         var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
         return ext switch

@@ -99,7 +99,8 @@ public class AccountResource
     }
 
     /// <summary>
-    /// Creates a new API key.
+    /// Creates a new test API key. Use the <see cref="CreateApiKeyOptions"/>
+    /// overload to create a live key or to choose its scopes.
     /// </summary>
     /// <param name="name">Display name for the API key</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -112,7 +113,8 @@ public class AccountResource
     }
 
     /// <summary>
-    /// Creates a new API key.
+    /// Creates a new API key: a test key unless
+    /// <see cref="CreateApiKeyOptions.Type"/> is <c>live</c>.
     /// </summary>
     /// <param name="options">API key creation options</param>
     /// <param name="cancellationToken">Cancellation token</param>

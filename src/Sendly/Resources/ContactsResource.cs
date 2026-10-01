@@ -100,27 +100,28 @@ public class ContactsResource
 
         object body = hasIds
             ? new { ids = request.Ids }
-            : new { listId = request.ListId };
+            : new Dictionary<string, object?> { ["listId"] = request.ListId };
 
         var doc = await _client.PostAsync("/contacts/bulk-mark-valid", body, cancellationToken);
         return JsonSerializer.Deserialize<BulkMarkValidResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
     /// <summary>
-    /// Trigger a background carrier lookup across your contacts. Landlines and
-    /// other non-SMS-capable numbers are auto-excluded from future campaigns.
-    /// Runs asynchronously (1-5 minutes). Idempotent: re-triggering while a
-    /// lookup is already running for the same scope is a no-op.
+    /// Trigger a background carrier lookup across your contacts, or only the
+    /// contacts in <see cref="CheckNumbersRequest.ListId"/> when you give one.
+    /// Landlines and other non-SMS-capable numbers are auto-excluded from
+    /// future campaigns. Runs asynchronously (1-5 minutes). Idempotent:
+    /// re-triggering while a lookup is already running for the same scope is
+    /// a no-op, and <see cref="CheckNumbersResponse.AlreadyRunning"/> is true.
     /// </summary>
     public async Task<CheckNumbersResponse> CheckNumbersAsync(
         CheckNumbersRequest? request = null,
         CancellationToken cancellationToken = default)
     {
-        var body = new
-        {
-            listId = request?.ListId,
-            force = request?.Force ?? false,
-        };
+        var body = new Dictionary<string, object?>();
+        if (request?.ListId != null)
+            body["listId"] = request.ListId;
+        body["force"] = request?.Force ?? false;
         var doc = await _client.PostAsync("/contacts/lookup", body, cancellationToken);
         return JsonSerializer.Deserialize<CheckNumbersResponse>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }

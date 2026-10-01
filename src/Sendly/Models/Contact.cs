@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sendly.Models;
 
 public class Contact
@@ -27,7 +29,14 @@ public class CheckNumbersRequest
 public class CheckNumbersResponse
 {
     public bool Success { get; set; }
+
+    /// <summary>
+    /// True when a lookup for the same scope was already running, so no new
+    /// one started.
+    /// </summary>
+    [JsonPropertyName("alreadyRunning")]
     public bool AlreadyRunning { get; set; }
+
     public string? Message { get; set; }
 }
 
@@ -98,12 +107,41 @@ public class CreateContactRequest
     public Dictionary<string, object>? Metadata { get; set; }
 }
 
-public class UpdateContactRequest
+/// <summary>
+/// Changes to a contact. Only the properties you set are sent, and the API
+/// leaves the others as they are. Setting <see cref="Name"/>,
+/// <see cref="Email"/> or <see cref="Metadata"/> to null clears it. A
+/// contact always has a phone number, so a null <see cref="PhoneNumber"/> is
+/// not sent.
+/// </summary>
+public class UpdateContactRequest : IAssignedProperties
 {
+    private readonly HashSet<string> _assigned = new();
+    private string? _name;
+    private string? _email;
+    private Dictionary<string, object>? _metadata;
+
     public string? PhoneNumber { get; set; }
-    public string? Name { get; set; }
-    public string? Email { get; set; }
-    public Dictionary<string, object>? Metadata { get; set; }
+
+    public string? Name
+    {
+        get => _name;
+        set { _name = value; _assigned.Add(nameof(Name)); }
+    }
+
+    public string? Email
+    {
+        get => _email;
+        set { _email = value; _assigned.Add(nameof(Email)); }
+    }
+
+    public Dictionary<string, object>? Metadata
+    {
+        get => _metadata;
+        set { _metadata = value; _assigned.Add(nameof(Metadata)); }
+    }
+
+    bool IAssignedProperties.IsAssigned(string propertyName) => _assigned.Contains(propertyName);
 }
 
 public class ListContactsOptions
@@ -120,10 +158,26 @@ public class CreateContactListRequest
     public string? Description { get; set; }
 }
 
-public class UpdateContactListRequest
+/// <summary>
+/// Changes to a contact list. Only the properties you set are sent, and the
+/// API leaves the others as they are. Setting <see cref="Description"/> to
+/// null clears it. A list always has a name, so a null <see cref="Name"/> is
+/// not sent.
+/// </summary>
+public class UpdateContactListRequest : IAssignedProperties
 {
+    private readonly HashSet<string> _assigned = new();
+    private string? _description;
+
     public string? Name { get; set; }
-    public string? Description { get; set; }
+
+    public string? Description
+    {
+        get => _description;
+        set { _description = value; _assigned.Add(nameof(Description)); }
+    }
+
+    bool IAssignedProperties.IsAssigned(string propertyName) => _assigned.Contains(propertyName);
 }
 
 public class AddContactsRequest
@@ -142,7 +196,19 @@ public class ImportContactItem
 public class ImportContactsRequest
 {
     public List<ImportContactItem> Contacts { get; set; } = new();
+
+    /// <summary>
+    /// Contact list to add the imported contacts to, including those that
+    /// already existed.
+    /// </summary>
+    [JsonPropertyName("listId")]
     public string? ListId { get; set; }
+
+    /// <summary>
+    /// Opt-in date (ISO 8601) for every contact that does not carry its own
+    /// <see cref="ImportContactItem.OptedInAt"/>.
+    /// </summary>
+    [JsonPropertyName("optedInAt")]
     public string? OptedInAt { get; set; }
 }
 
@@ -156,7 +222,22 @@ public class ImportContactsError
 public class ImportContactsResponse
 {
     public int Imported { get; set; }
+
+    /// <summary>
+    /// Contacts skipped because the phone number already existed.
+    /// </summary>
+    [JsonPropertyName("skippedDuplicates")]
     public int SkippedDuplicates { get; set; }
+
+    /// <summary>
+    /// The first 50 rows that could not be imported.
+    /// </summary>
     public List<ImportContactsError> Errors { get; set; } = new();
+
+    /// <summary>
+    /// How many rows could not be imported, including any beyond the 50 in
+    /// <see cref="Errors"/>.
+    /// </summary>
+    [JsonPropertyName("totalErrors")]
     public int TotalErrors { get; set; }
 }

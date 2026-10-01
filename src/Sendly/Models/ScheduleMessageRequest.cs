@@ -20,9 +20,11 @@ public class ScheduleMessageRequest
     public string Text { get; set; }
 
     /// <summary>
-    /// ISO 8601 datetime for delivery (must be at least 1 minute in the future).
+    /// ISO 8601 datetime for delivery, at least 5 minutes and at most 5 days
+    /// in the future; the API refuses any other time with a 400
+    /// <c>invalid_scheduled_time</c>.
     /// </summary>
-    [JsonPropertyName("scheduled_at")]
+    [JsonPropertyName("scheduledAt")]
     public string ScheduledAt { get; set; }
 
     /// <summary>
@@ -45,6 +47,18 @@ public class ScheduleMessageRequest
     [JsonPropertyName("metadata")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, object>? Metadata { get; set; }
+
+    /// <summary>
+    /// Creates an empty schedule message request, for object-initializer
+    /// syntax. Set <see cref="To"/>, <see cref="Text"/> and
+    /// <see cref="ScheduledAt"/> before sending it.
+    /// </summary>
+    public ScheduleMessageRequest()
+    {
+        To = string.Empty;
+        Text = string.Empty;
+        ScheduledAt = string.Empty;
+    }
 
     /// <summary>
     /// Creates a new schedule message request.

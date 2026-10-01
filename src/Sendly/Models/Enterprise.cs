@@ -322,6 +322,19 @@ public class InheritVerificationOptions
 {
     [JsonPropertyName("sourceWorkspaceId")]
     public string SourceWorkspaceId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// When true, the workspace gets its own toll-free number instead of
+    /// sharing the source's: the source's business details are copied, and
+    /// a new number is ordered for the workspace and submitted for
+    /// verification. Ordering and submitting are best effort, so check
+    /// <see cref="InheritVerificationResponse.TollFreeNumber"/> (null when no
+    /// number could be ordered) and <see cref="InheritVerificationResponse.Status"/>.
+    /// When null or false, the workspace shares the source's verification
+    /// and number.
+    /// </summary>
+    [JsonPropertyName("purchaseNewNumber")]
+    public bool? PurchaseNewNumber { get; set; }
 }
 
 public class InheritVerificationResponse
@@ -340,6 +353,15 @@ public class InheritVerificationResponse
 
     [JsonPropertyName("inheritedFrom")]
     public string InheritedFrom { get; set; } = string.Empty;
+
+    /// <summary>
+    /// True when the call asked for the workspace's own number
+    /// (<see cref="InheritVerificationOptions.PurchaseNewNumber"/>); see
+    /// <see cref="TollFreeNumber"/> for the number ordered. Null when the
+    /// workspace shares the source's verification.
+    /// </summary>
+    [JsonPropertyName("newNumber")]
+    public bool? NewNumber { get; set; }
 
     internal static InheritVerificationResponse FromJson(JsonElement element, JsonSerializerOptions options)
     {
@@ -557,6 +579,21 @@ public class ProvisionWorkspaceResponse
     [JsonPropertyName("webhook")]
     public ProvisionedWebhook? Webhook { get; set; }
 
+    /// <summary>
+    /// The hosted opt-in page generated for the workspace, or null when none
+    /// was generated. Its <see cref="ProvisionedOptInPage.Error"/> says why
+    /// generation failed.
+    /// </summary>
+    [JsonPropertyName("optInPage")]
+    public ProvisionedOptInPage? OptInPage { get; set; }
+
+    /// <summary>
+    /// The hosted privacy policy and terms pages generated with the opt-in
+    /// page, or null when none were generated.
+    /// </summary>
+    [JsonPropertyName("legalPages")]
+    public ProvisionedLegalPages? LegalPages { get; set; }
+
     internal static ProvisionWorkspaceResponse FromJson(JsonElement element, JsonSerializerOptions options)
     {
         return JsonSerializer.Deserialize<ProvisionWorkspaceResponse>(element.GetRawText(), options)
@@ -624,6 +661,42 @@ public class ProvisionedKey
     public string Type { get; set; } = string.Empty;
 }
 
+public class ProvisionedOptInPage
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
+    [JsonPropertyName("slug")]
+    public string? Slug { get; set; }
+
+    /// <summary>The page's public URL.</summary>
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+
+    /// <summary>Why the page could not be generated; null when it was.</summary>
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+}
+
+public class ProvisionedLegalPages
+{
+    [JsonPropertyName("privacyUrl")]
+    public string? PrivacyUrl { get; set; }
+
+    [JsonPropertyName("termsUrl")]
+    public string? TermsUrl { get; set; }
+
+    [JsonPropertyName("privacyPageId")]
+    public string? PrivacyPageId { get; set; }
+
+    [JsonPropertyName("termsPageId")]
+    public string? TermsPageId { get; set; }
+
+    /// <summary>Why the pages could not be generated; null when they were.</summary>
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+}
+
 public class ProvisionedWebhook
 {
     [JsonPropertyName("url")]
@@ -689,6 +762,9 @@ public class EnterpriseWebhookSecretRotation
 
 public class EnterpriseAnalyticsOverview
 {
+    [JsonPropertyName("totalWorkspaces")]
+    public int TotalWorkspaces { get; set; }
+
     [JsonPropertyName("totalMessages")]
     public int TotalMessages { get; set; }
 
@@ -698,14 +774,39 @@ public class EnterpriseAnalyticsOverview
     [JsonPropertyName("failedMessages")]
     public int FailedMessages { get; set; }
 
+    /// <summary>
+    /// Delivered messages as a percentage of all messages, rounded to a
+    /// whole number. <see cref="DeliveryRatePercent"/> has the two decimal
+    /// places the API reports.
+    /// </summary>
+    [JsonIgnore]
+    public int DeliveryRate
+    {
+        get => (int)Math.Round(DeliveryRatePercent, MidpointRounding.AwayFromZero);
+        set => DeliveryRatePercent = value;
+    }
+
+    /// <summary>
+    /// Delivered messages as a percentage of all messages, to two decimal
+    /// places (for example 97.53).
+    /// </summary>
     [JsonPropertyName("deliveryRate")]
-    public int DeliveryRate { get; set; }
+    public double DeliveryRatePercent { get; set; }
 
     [JsonPropertyName("totalCreditsUsed")]
     public int TotalCreditsUsed { get; set; }
 
+    /// <summary>
+    /// Credit balance across the workspaces.
+    /// </summary>
+    [JsonPropertyName("totalCredits")]
+    public int TotalCredits { get; set; }
+
     [JsonPropertyName("activeWorkspaces")]
     public int ActiveWorkspaces { get; set; }
+
+    [JsonPropertyName("suspendedWorkspaces")]
+    public int SuspendedWorkspaces { get; set; }
 
     internal static EnterpriseAnalyticsOverview FromJson(JsonElement element, JsonSerializerOptions options)
     {
@@ -776,8 +877,36 @@ public class EnterpriseCreditsAnalytics
     [JsonPropertyName("period")]
     public string Period { get; set; } = string.Empty;
 
+    /// <summary>
+    /// A daily series. The API reports totals instead, so this is empty.
+    /// </summary>
     [JsonPropertyName("data")]
     public List<EnterpriseCreditsDailyData> Data { get; set; } = new();
+
+    /// <summary>
+    /// Credit balance across the workspaces.
+    /// </summary>
+    [JsonPropertyName("totalBalance")]
+    public int TotalBalance { get; set; }
+
+    /// <summary>
+    /// Credits the workspaces have ever received.
+    /// </summary>
+    [JsonPropertyName("totalLifetime")]
+    public int TotalLifetime { get; set; }
+
+    /// <summary>
+    /// Credits the workspaces have used: <see cref="TotalLifetime"/> less
+    /// <see cref="TotalBalance"/>.
+    /// </summary>
+    [JsonPropertyName("totalUsed")]
+    public int TotalUsed { get; set; }
+
+    /// <summary>
+    /// Number of workspaces counted.
+    /// </summary>
+    [JsonPropertyName("workspaceCount")]
+    public int WorkspaceCount { get; set; }
 
     internal static EnterpriseCreditsAnalytics FromJson(JsonElement element, JsonSerializerOptions options)
     {
@@ -900,22 +1029,55 @@ public class CreateOptInPageResponse
     }
 }
 
-public class UpdateOptInPageOptions
+/// <summary>
+/// Changes to an opt-in page. Only the properties you set are sent, and the
+/// API leaves the others as they are. Setting a property to null clears it.
+/// </summary>
+public class UpdateOptInPageOptions : IAssignedProperties
 {
+    private readonly HashSet<string> _assigned = new();
+    private string? _logoUrl;
+    private string? _headerColor;
+    private string? _buttonColor;
+    private string? _customHeadline;
+    private List<string>? _customBenefits;
+
     [JsonPropertyName("logoUrl")]
-    public string? LogoUrl { get; set; }
+    public string? LogoUrl
+    {
+        get => _logoUrl;
+        set { _logoUrl = value; _assigned.Add(nameof(LogoUrl)); }
+    }
 
     [JsonPropertyName("headerColor")]
-    public string? HeaderColor { get; set; }
+    public string? HeaderColor
+    {
+        get => _headerColor;
+        set { _headerColor = value; _assigned.Add(nameof(HeaderColor)); }
+    }
 
     [JsonPropertyName("buttonColor")]
-    public string? ButtonColor { get; set; }
+    public string? ButtonColor
+    {
+        get => _buttonColor;
+        set { _buttonColor = value; _assigned.Add(nameof(ButtonColor)); }
+    }
 
     [JsonPropertyName("customHeadline")]
-    public string? CustomHeadline { get; set; }
+    public string? CustomHeadline
+    {
+        get => _customHeadline;
+        set { _customHeadline = value; _assigned.Add(nameof(CustomHeadline)); }
+    }
 
     [JsonPropertyName("customBenefits")]
-    public List<string>? CustomBenefits { get; set; }
+    public List<string>? CustomBenefits
+    {
+        get => _customBenefits;
+        set { _customBenefits = value; _assigned.Add(nameof(CustomBenefits)); }
+    }
+
+    bool IAssignedProperties.IsAssigned(string propertyName) => _assigned.Contains(propertyName);
 }
 
 public class DeleteOptInPageResponse
@@ -1232,7 +1394,12 @@ public class QuotaSettings
 
 public class UpdateQuotaOptions
 {
+    /// <summary>
+    /// Messages the workspace may send each month. Null removes the quota,
+    /// so null is always sent.
+    /// </summary>
     [JsonPropertyName("monthlyMessageQuota")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public int? MonthlyMessageQuota { get; set; }
 }
 

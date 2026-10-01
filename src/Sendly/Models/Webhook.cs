@@ -321,29 +321,32 @@ public class WebhookList : IEnumerable<Webhook>
 
         var root = response.RootElement;
 
-        if (root.TryGetProperty("webhooks", out var webhooksElement) && webhooksElement.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var element in webhooksElement.EnumerateArray())
-            {
-                Data.Add(Webhook.FromJson(element, options));
-            }
-        }
-        else if (root.TryGetProperty("data", out var dataElement) && dataElement.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var element in dataElement.EnumerateArray())
-            {
-                Data.Add(Webhook.FromJson(element, options));
-            }
-        }
-        else if (root.ValueKind == JsonValueKind.Array)
+        if (root.ValueKind == JsonValueKind.Array)
         {
             foreach (var element in root.EnumerateArray())
             {
                 Data.Add(Webhook.FromJson(element, options));
             }
         }
+        else if (root.ValueKind == JsonValueKind.Object)
+        {
+            if (root.TryGetProperty("webhooks", out var webhooksElement) && webhooksElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var element in webhooksElement.EnumerateArray())
+                {
+                    Data.Add(Webhook.FromJson(element, options));
+                }
+            }
+            else if (root.TryGetProperty("data", out var dataElement) && dataElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var element in dataElement.EnumerateArray())
+                {
+                    Data.Add(Webhook.FromJson(element, options));
+                }
+            }
+        }
 
-        if (root.TryGetProperty("total", out var totalElement))
+        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("total", out var totalElement))
         {
             Total = totalElement.GetInt32();
         }

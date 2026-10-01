@@ -6,7 +6,7 @@ namespace Sendly.Models;
 public class ListMessagesOptions
 {
     /// <summary>
-    /// Maximum messages to return (default: 20, max: 100).
+    /// Maximum messages to return (default: 50, max: 100).
     /// </summary>
     public int? Limit { get; set; }
 

@@ -207,11 +207,10 @@ public class RcsResourceTests : IDisposable
     public async Task CapabilityAsync_WithTestKey_ThrowsSendlyException()
     {
         // Arrange — capability probes are carrier-backed, so they need a live
-        // key. 403 is retryable in the client, so queue 1 initial + 3 retries.
+        // key.
         const string forbidden =
             @"{""error"": ""rcs_requires_live_key"", ""message"": ""RCS capability checks require a live API key. Test keys cannot query RCS capability.""}";
-        for (var i = 0; i < 4; i++)
-            _mockHandler.QueueResponse(HttpStatusCode.Forbidden, forbidden);
+        _mockHandler.QueueResponse(HttpStatusCode.Forbidden, forbidden);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<SendlyException>(

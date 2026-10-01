@@ -71,7 +71,7 @@ public class CallsResource
     /// <param name="options">Optional idempotency key</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The new call, ringing</returns>
-    /// <exception cref="ValidationException">400 <c>agent_required</c>, <c>from_number_required</c>, <c>invalid_number</c>, <c>destination_not_supported</c> or <c>invalid_metadata</c></exception>
+    /// <exception cref="ValidationException">400 <c>agent_required</c>, <c>from_number_required</c>, <c>from_number_not_supported</c>, <c>invalid_number</c>, <c>destination_not_supported</c> or <c>invalid_metadata</c></exception>
     /// <exception cref="NotFoundException">404 <c>voice_not_enabled</c>, <c>outbound_calls_not_enabled</c>, <c>agent_not_found</c> or <c>number_not_found</c></exception>
     /// <exception cref="InsufficientCreditsException">402 <c>insufficient_credits</c> when the balance cannot cover one minute</exception>
     /// <exception cref="RateLimitException">429 <c>daily_call_limit</c> or <c>rate_limit_exceeded</c></exception>

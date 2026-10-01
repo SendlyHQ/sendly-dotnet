@@ -8,7 +8,7 @@ using Xunit;
 namespace Sendly.Tests;
 
 /// <summary>
-/// Tests for automatic idempotency keys - generation, retry reuse, rotation.
+/// Tests for automatic idempotency keys - generation and retry reuse.
 /// </summary>
 public class IdempotencyTests : IDisposable
 {
@@ -20,8 +20,8 @@ public class IdempotencyTests : IDisposable
         ""to"": ""+15551234567"",
         ""text"": ""Hello World"",
         ""status"": ""queued"",
-        ""credits_used"": 1,
-        ""created_at"": ""2024-01-20T10:00:00Z"",
+        ""creditsUsed"": 1,
+        ""createdAt"": ""2024-01-20T10:00:00Z"",
         ""updated_at"": ""2024-01-20T10:00:00Z""
     }";
 
@@ -211,7 +211,7 @@ public class IdempotencyTests : IDisposable
     }
 
     [Fact]
-    public async Task SendAsync_ServerErrorRetry_RotatesKey()
+    public async Task SendAsync_ServerErrorRetry_KeepsKey()
     {
         // Arrange
         _mockHandler.QueueResponse(HttpStatusCode.InternalServerError,
@@ -227,12 +227,11 @@ public class IdempotencyTests : IDisposable
         var first = KeyOfRequest(0);
         var second = KeyOfRequest(1);
         Assert.NotNull(first);
-        Assert.NotNull(second);
-        Assert.NotEqual(first, second);
+        Assert.Equal(first, second);
     }
 
     [Fact]
-    public async Task SendAsync_ServerErrorThenTimeout_KeepsRotatedKey()
+    public async Task SendAsync_ServerErrorThenTimeout_KeepsOneKey()
     {
         // Arrange
         _mockHandler.QueueResponse(HttpStatusCode.InternalServerError,
@@ -249,16 +248,16 @@ public class IdempotencyTests : IDisposable
         var first = KeyOfRequest(0);
         var second = KeyOfRequest(1);
         var third = KeyOfRequest(2);
-        Assert.NotEqual(first, second);
-        Assert.Equal(second, third);
+        Assert.Equal(first, second);
+        Assert.Equal(first, third);
     }
 
     [Fact]
     public async Task SendAsync_NonServerErrorRetry_KeepsKey()
     {
         // Arrange
-        _mockHandler.QueueResponse(HttpStatusCode.Conflict,
-            @"{""error"": ""conflict"", ""message"": ""Resource busy""}");
+        _mockHandler.QueueResponse(HttpStatusCode.RequestTimeout,
+            @"{""error"": ""request_timeout"", ""message"": ""Request timed out""}");
         _mockHandler.QueueSuccessResponse(MessageJson);
 
         // Act
@@ -271,7 +270,7 @@ public class IdempotencyTests : IDisposable
     }
 
     [Fact]
-    public async Task UploadAsync_ServerErrorRetry_RotatesKey()
+    public async Task UploadAsync_ServerErrorRetry_KeepsKey()
     {
         // Arrange
         _mockHandler.QueueResponse(HttpStatusCode.BadGateway,
@@ -289,8 +288,7 @@ public class IdempotencyTests : IDisposable
         var first = KeyOfRequest(0);
         var second = KeyOfRequest(1);
         Assert.Matches(AutoKeyPattern, first);
-        Assert.Matches(AutoKeyPattern, second);
-        Assert.NotEqual(first, second);
+        Assert.Equal(first, second);
     }
 
     #endregion
@@ -380,8 +378,8 @@ public class IdempotencyTests : IDisposable
             ""to"": ""+15551234567"",
             ""text"": ""Reminder!"",
             ""status"": ""scheduled"",
-            ""scheduled_at"": ""2030-01-20T10:00:00Z"",
-            ""created_at"": ""2024-01-20T10:00:00Z""
+            ""scheduledAt"": ""2030-01-20T10:00:00Z"",
+            ""createdAt"": ""2024-01-20T10:00:00Z""
         }");
 
         // Act

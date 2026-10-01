@@ -10,7 +10,7 @@ try
 {
     // Send an SMS
     var message = await client.Messages.SendAsync(
-        "+15551234567",
+        "+15125550123",
         "Hello from Sendly .NET SDK!"
     );
 
@@ -28,9 +28,13 @@ catch (InsufficientCreditsException e)
 {
     Console.WriteLine($"Insufficient credits: {e.Message}");
 }
+catch (RateLimitException e) when (e.ApiErrorCode == "too_many_failed_key_attempts")
+{
+    Console.WriteLine("Too many wrong API keys from this address. Check SENDLY_API_KEY; retrying will not help.");
+}
 catch (RateLimitException e)
 {
-    Console.WriteLine($"Rate limited. Retry after: {e.RetryAfter?.TotalSeconds} seconds");
+    Console.WriteLine($"Rate limited ({e.ApiErrorCode}). Retry after: {e.RetryAfter?.TotalSeconds} seconds");
 }
 catch (ValidationException e)
 {

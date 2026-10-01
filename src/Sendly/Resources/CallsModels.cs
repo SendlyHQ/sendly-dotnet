@@ -57,6 +57,26 @@ public static class CallKind
     public const string Internal = "internal";
 }
 
+/// <summary>
+/// How the call reached Sendly. Reported as <see cref="Call.Channel"/>.
+/// Values are plain strings, so a channel added later still deserializes.
+/// </summary>
+public static class CallChannel
+{
+    /// <summary>A call over the phone network.</summary>
+    public const string Phone = "phone";
+
+    /// <summary>
+    /// A WhatsApp call to or from one of your WhatsApp senders. An inbound
+    /// WhatsApp call can read <c>phone</c> until WhatsApp calls are labelled
+    /// on the inbound line.
+    /// </summary>
+    public const string WhatsApp = "whatsapp";
+
+    /// <summary>A browser-to-browser call between teammates.</summary>
+    public const string Browser = "browser";
+}
+
 /// <summary>Who is on your side of the call. Reported as <see cref="Call.HandledBy"/>.</summary>
 public static class CallHandledBy
 {
@@ -196,12 +216,18 @@ public static class CallHangupClass
 /// The <c>error</c> codes voice endpoints answer with, as carried on
 /// <see cref="Sendly.Exceptions.SendlyException.ApiErrorCode"/>.
 /// <c>insufficient_credits</c>, <c>invalid_number</c>,
-/// <c>rate_limit_exceeded</c> and <c>forbidden</c> are shared with the rest of
-/// the API.
+/// <c>rate_limit_exceeded</c>, <c>forbidden</c>,
+/// <c>too_many_failed_key_attempts</c> and
+/// <c>too_many_concurrent_verifications</c> are shared with the rest of the
+/// API.
 /// </summary>
 public static class CallErrorCode
 {
-    /// <summary>404: voice is not enabled for the workspace yet.</summary>
+    /// <summary>
+    /// 404: voice is not enabled for the workspace yet. Also 409 from
+    /// <c>client.WhatsApp.Senders.SetCallingAsync</c> when WhatsApp calling
+    /// is switched on for a number whose voice is off.
+    /// </summary>
     public const string VoiceNotEnabled = "voice_not_enabled";
 
     /// <summary>404: calls to phone numbers are not enabled for the workspace yet.</summary>
@@ -221,6 +247,9 @@ public static class CallErrorCode
 
     /// <summary>400: the workspace has several voice-enabled numbers; pass <c>From</c>.</summary>
     public const string FromNumberRequired = "from_number_required";
+
+    /// <summary>400: calls can only be placed from US and Canadian numbers; pass a <c>From</c> in the US or Canada.</summary>
+    public const string FromNumberNotSupported = "from_number_not_supported";
 
     /// <summary>409: no number in the workspace has voice enabled.</summary>
     public const string NoVoiceNumber = "no_voice_number";
@@ -276,6 +305,20 @@ public static class CallErrorCode
     /// (contact support); otherwise try again later.
     /// </summary>
     public const string CarrierRefused = "carrier_refused";
+
+    /// <summary>
+    /// 429 from any endpoint: too many requests from this address used a
+    /// wrong API key, so keys are refused until <c>RetryAfter</c> has passed.
+    /// The client does not retry it; check the key.
+    /// </summary>
+    public const string TooManyFailedKeyAttempts = "too_many_failed_key_attempts";
+
+    /// <summary>
+    /// 429 from any endpoint: too many API key checks were already running
+    /// for the account from this address. Transient; the client retries it
+    /// after <c>RetryAfter</c> (1 second).
+    /// </summary>
+    public const string TooManyConcurrentVerifications = "too_many_concurrent_verifications";
 }
 
 /// <summary>
@@ -294,6 +337,14 @@ public class Call
     /// <summary><c>pstn</c> or <c>internal</c>. See <see cref="CallKind"/>.</summary>
     [JsonPropertyName("kind")]
     public string Kind { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <c>phone</c>, <c>whatsapp</c> or <c>browser</c>. See
+    /// <see cref="CallChannel"/>; a value not listed there comes through
+    /// unchanged. Null when the API did not send one.
+    /// </summary>
+    [JsonPropertyName("channel")]
+    public string? Channel { get; set; }
 
     /// <summary><c>inbound</c> or <c>outbound</c>. See <see cref="CallDirection"/>.</summary>
     [JsonPropertyName("direction")]

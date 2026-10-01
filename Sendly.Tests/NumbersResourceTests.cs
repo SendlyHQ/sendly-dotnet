@@ -230,6 +230,65 @@ public class NumbersResourceTests : IDisposable
         Assert.Null(result.Numbers[1].VoiceMode);
     }
 
+    private const string ProvisionedTollFreeJson = @"{
+        ""id"": ""n_1"",
+        ""phoneNumber"": ""+18335550100"",
+        ""status"": ""active"",
+        ""source"": ""provisioned"",
+        ""countryCode"": ""US"",
+        ""phoneNumberType"": ""toll_free"",
+        ""monthlyCostCents"": null,
+        ""requirementsSubmittedAt"": null,
+        ""pendingCancellation"": false,
+        ""scheduledReleaseAt"": null,
+        ""voiceEnabled"": false,
+        ""voiceMode"": ""none""
+    }";
+
+    [Fact]
+    public async Task ListAsync_WithTheProvisionedTollFreeNumber_ReadsANullMonthlyCost()
+    {
+        _mockHandler.QueueSuccessResponse($@"{{ ""numbers"": [{ProvisionedTollFreeJson}] }}");
+
+        var result = await _client.Numbers.ListAsync();
+
+        var number = Assert.Single(result.Numbers);
+        Assert.Equal("n_1", number.Id);
+        Assert.Equal(0, number.MonthlyCostCents);
+        Assert.Null(number.MonthlyCostCentsOrNull);
+        Assert.False(number.PendingCancellation);
+    }
+
+    [Fact]
+    public async Task ListAsync_WithAPricedNumber_ReadsBothCostProperties()
+    {
+        _mockHandler.QueueSuccessResponse($@"{{ ""numbers"": [{ProvisionedTollFreeJson.Replace(@"""monthlyCostCents"": null", @"""monthlyCostCents"": 110")}] }}");
+
+        var number = Assert.Single((await _client.Numbers.ListAsync()).Numbers);
+
+        Assert.Equal(110, number.MonthlyCostCents);
+        Assert.Equal(110, number.MonthlyCostCentsOrNull);
+    }
+
+    [Fact]
+    public void MonthlyCostCents_WhenSet_SetsTheReportedCostToo()
+    {
+        var number = new OwnedNumber { MonthlyCostCents = 250 };
+
+        Assert.Equal(250, number.MonthlyCostCentsOrNull);
+    }
+
+    [Fact]
+    public async Task GetAsync_WithTheProvisionedTollFreeNumber_ReadsANullMonthlyCost()
+    {
+        _mockHandler.QueueSuccessResponse(ProvisionedTollFreeJson.Replace(@"""voiceMode"": ""none""", @"""voiceMode"": ""none"", ""isDefault"": true"));
+
+        var number = await _client.Numbers.GetAsync("n_1");
+
+        Assert.Equal(0, number.MonthlyCostCents);
+        Assert.True(number.IsDefault);
+    }
+
     [Fact]
     public async Task ListAsync_With401Response_ThrowsAuthenticationException()
     {

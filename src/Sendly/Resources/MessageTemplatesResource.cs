@@ -282,11 +282,23 @@ public class UpdateMessageTemplateRequest
 /// </summary>
 public class MessageTemplatePreview
 {
-    /// <summary>Template ID.</summary>
+    /// <summary>
+    /// Template ID. The preview response does not include it, so this is
+    /// empty; see <see cref="TemplateId"/>.
+    /// </summary>
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
 
-    /// <summary>Template name.</summary>
+    /// <summary>
+    /// ID of the previewed template.
+    /// </summary>
+    [JsonPropertyName("template_id")]
+    public string TemplateId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Template name. The preview response does not include it, so this is
+    /// empty.
+    /// </summary>
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
 
@@ -294,11 +306,22 @@ public class MessageTemplatePreview
     [JsonPropertyName("original_text")]
     public string OriginalText { get; set; } = string.Empty;
 
-    /// <summary>Interpolated text with sample values.</summary>
-    [JsonPropertyName("preview_text")]
+    /// <summary>The text with the variables filled in.</summary>
+    [JsonPropertyName("rendered_text")]
     public string PreviewText { get; set; } = string.Empty;
 
-    /// <summary>Variables detected.</summary>
+    /// <summary>Length of the filled-in text, in characters.</summary>
+    [JsonPropertyName("character_count")]
+    public int CharacterCount { get; set; }
+
+    /// <summary>Number of SMS segments the filled-in text takes.</summary>
+    [JsonPropertyName("segment_count")]
+    public int SegmentCount { get; set; }
+
+    /// <summary>
+    /// Variables detected. The preview response does not include them, so
+    /// this is empty.
+    /// </summary>
     [JsonPropertyName("variables")]
     public List<MessageTemplateVariable> Variables { get; set; } = new();
 }

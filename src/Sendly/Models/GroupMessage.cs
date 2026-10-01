@@ -87,6 +87,7 @@ public class GroupMessageResponse
     /// The recipients the group message was sent to.
     /// </summary>
     [JsonPropertyName("to")]
+    [JsonConverter(typeof(GroupRecipientNumbersConverter))]
     public List<string> To { get; set; } = new();
 
     /// <summary>
@@ -109,11 +110,92 @@ public class GroupMessageResponse
     public string? Message { get; set; }
 
     /// <summary>
+    /// Each recipient with its status. Filled on a live send; null on a
+    /// simulated send.
+    /// </summary>
+    [JsonPropertyName("recipients")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<GroupRecipient>? Recipients { get; set; }
+
+    /// <summary>
     /// Creates a GroupMessageResponse from a JSON element.
     /// </summary>
     internal static GroupMessageResponse FromJson(JsonElement element, JsonSerializerOptions options)
     {
-        return JsonSerializer.Deserialize<GroupMessageResponse>(element.GetRawText(), options)
+        var response = JsonSerializer.Deserialize<GroupMessageResponse>(element.GetRawText(), options)
             ?? new GroupMessageResponse();
+
+        if (response.Recipients == null
+            && element.TryGetProperty("to", out var to)
+            && to.ValueKind == JsonValueKind.Array
+            && to.EnumerateArray().Any(item => item.ValueKind == JsonValueKind.Object))
+        {
+            response.Recipients = to.EnumerateArray()
+                .Where(item => item.ValueKind == JsonValueKind.Object)
+                .Select(item => JsonSerializer.Deserialize<GroupRecipient>(item.GetRawText(), options) ?? new GroupRecipient())
+                .ToList();
+        }
+
+        return response;
     }
+}
+
+internal sealed class GroupRecipientNumbersConverter : JsonConverter<List<string>>
+{
+    public override List<string> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        var numbers = new List<string>();
+        if (reader.TokenType == JsonTokenType.Null)
+            return numbers;
+
+        using var document = JsonDocument.ParseValue(ref reader);
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+            throw new JsonException("Expected 'to' to be an array");
+
+        foreach (var item in document.RootElement.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String)
+            {
+                numbers.Add(item.GetString()!);
+            }
+            else if (item.ValueKind == JsonValueKind.Object)
+            {
+                numbers.Add(item.TryGetProperty("phoneNumber", out var phone) && phone.ValueKind == JsonValueKind.String
+                    ? phone.GetString()!
+                    : string.Empty);
+            }
+            else
+            {
+                throw new JsonException("Expected each 'to' entry to be a phone number or a recipient object");
+            }
+        }
+
+        return numbers;
+    }
+
+    public override void Write(Utf8JsonWriter writer, List<string> value, JsonSerializerOptions options)
+    {
+        writer.WriteStartArray();
+        foreach (var number in value)
+            writer.WriteStringValue(number);
+        writer.WriteEndArray();
+    }
+}
+
+/// <summary>
+/// One recipient of a live group send.
+/// </summary>
+public class GroupRecipient
+{
+    /// <summary>
+    /// The recipient's phone number in E.164 format.
+    /// </summary>
+    [JsonPropertyName("phoneNumber")]
+    public string PhoneNumber { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The recipient's status when the send was accepted, for example "queued".
+    /// </summary>
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
 }

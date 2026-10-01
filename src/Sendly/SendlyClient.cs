@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using Sendly.Exceptions;
 using Sendly.Resources;
 
@@ -21,6 +24,12 @@ public class SendlyClient : IDisposable
     /// Default API base URL.
     /// </summary>
     public const string DefaultBaseUrl = "https://sendly.live/api/v1";
+
+    private static readonly TimeSpan MaxRetryWait = TimeSpan.FromSeconds(60);
+
+    private static bool WaitsOut(RateLimitException e) =>
+        (e.ApiErrorCode is null or "rate_limit_exceeded" or "provision_rate_limit" or "too_many_concurrent_verifications") &&
+        (e.RetryAfter ?? TimeSpan.Zero) <= MaxRetryWait;
 
     private readonly string _apiKey;
     private readonly HttpClient _httpClient;
@@ -187,7 +196,9 @@ public class SendlyClient : IDisposable
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            PropertyNameCaseInsensitive = true
+            PropertyNameCaseInsensitive = true,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            TypeInfoResolver = new DefaultJsonTypeInfoResolver { Modifiers = { SendAssignedNulls } }
         };
 
         Messages = new MessagesResource(this);
@@ -236,14 +247,13 @@ public class SendlyClient : IDisposable
     ///
     /// Every POST carries an Idempotency-Key header so the server can dedupe
     /// the SDK's own retries: an auto-generated key ("sendly-dotnet-retry-" +
-    /// UUID) is created once per logical request and reused across timeout and
-    /// network-error retries, but rotated after an actual 5xx response (the
-    /// server may have cached that error under the key). A caller-supplied
-    /// <paramref name="idempotencyKey"/> is sent verbatim and never rotated.
+    /// UUID) is created once per logical request and reused on every retry,
+    /// after a timeout, a network error or a 5xx alike. A caller-supplied
+    /// <paramref name="idempotencyKey"/> is sent verbatim and never changed.
     /// Pass <paramref name="autoIdempotencyKey"/> false to skip auto-generation
     /// (the batch endpoint dedupes header-less retries by content hash).
     /// </summary>
-    internal async Task<JsonDocument> PostAsync<T>(string path, T body, string? idempotencyKey, bool autoIdempotencyKey, CancellationToken cancellationToken = default)
+    internal async Task<JsonDocument> PostAsync<T>(string path, T body, string? idempotencyKey, bool autoIdempotencyKey, CancellationToken cancellationToken = default, bool retryUnknownOutcomes = true)
     {
         var json = JsonSerializer.Serialize(body, _jsonOptions);
         var normalizedPath = NormalizePath(path);
@@ -263,8 +273,8 @@ public class SendlyClient : IDisposable
                 return _httpClient.SendAsync(request, cancellationToken);
             },
             initialKey,
-            rotateKeyOnServerError: explicitKey == null,
-            cancellationToken);
+            cancellationToken,
+            retryUnknownOutcomes);
     }
 
     /// <summary>
@@ -332,16 +342,15 @@ public class SendlyClient : IDisposable
                 return _httpClient.SendAsync(request, cancellationToken);
             },
             explicitKey,
-            rotateKeyOnServerError: false,
             cancellationToken);
     }
 
     /// <summary>
     /// Makes a POST request with raw HttpContent (multipart uploads). Carries
-    /// an auto-generated Idempotency-Key with the same reuse/rotation rules as
-    /// JSON POSTs.
+    /// an auto-generated Idempotency-Key, reused on every retry as for JSON
+    /// POSTs.
     /// </summary>
-    internal async Task<JsonDocument> PostContentAsync(string path, HttpContent content, CancellationToken cancellationToken = default)
+    internal async Task<JsonDocument> PostContentAsync(string path, HttpContent content, CancellationToken cancellationToken = default, bool retryUnknownOutcomes = true)
     {
         var normalizedPath = NormalizePath(path);
         var initialKey = GenerateIdempotencyKey();
@@ -358,8 +367,8 @@ public class SendlyClient : IDisposable
                 return _httpClient.SendAsync(request, cancellationToken);
             },
             initialKey,
-            rotateKeyOnServerError: true,
-            cancellationToken);
+            cancellationToken,
+            retryUnknownOutcomes);
     }
 
     /// <summary>
@@ -391,13 +400,38 @@ public class SendlyClient : IDisposable
                 return _httpClient.SendAsync(request, cancellationToken);
             },
             explicitKey,
-            rotateKeyOnServerError: false,
             cancellationToken);
+    }
+
+    private static void SendAssignedNulls(JsonTypeInfo typeInfo)
+    {
+        if (!typeof(IAssignedProperties).IsAssignableFrom(typeInfo.Type))
+            return;
+
+        foreach (var property in typeInfo.Properties)
+        {
+            if (property.AttributeProvider is not MemberInfo member)
+                continue;
+
+            var name = member.Name;
+            property.ShouldSerialize = (target, value) =>
+                value != null || ((IAssignedProperties)target).IsAssigned(name);
+        }
     }
 
     private static string NormalizePath(string path)
     {
-        return path.TrimStart('/');
+        var normalized = path.TrimStart('/');
+        var queryStart = normalized.IndexOf('?');
+        var pathPart = queryStart >= 0 ? normalized[..queryStart] : normalized;
+
+        foreach (var segment in pathPart.Split('/'))
+        {
+            if (segment.Length == 0 || segment == "." || segment == "..")
+                throw new ValidationException("An ID in the request path cannot be empty, '.' or '..'");
+        }
+
+        return normalized;
     }
 
     /// <summary>
@@ -431,31 +465,30 @@ public class SendlyClient : IDisposable
         Func<Task<HttpResponseMessage>> requestFunc,
         CancellationToken cancellationToken)
     {
-        return await ExecuteWithRetryAsync(_ => requestFunc(), null, false, cancellationToken);
+        return await ExecuteWithRetryAsync(_ => requestFunc(), null, cancellationToken);
     }
 
     /// <summary>
-    /// Retry loop with idempotency-key lifecycle. The key is reused across
-    /// timeout and network-error retries (outcome unknown — the server can
-    /// dedupe a request that actually went through) and rotated after an
-    /// actual 5xx response when <paramref name="rotateKeyOnServerError"/> is
-    /// true, so the retry re-executes instead of replaying the cached error.
+    /// Retry loop that sends every attempt with the same idempotency key, so
+    /// the server can replay a request that already went through.
     /// </summary>
     private async Task<JsonDocument> ExecuteWithRetryAsync(
         Func<string?, Task<HttpResponseMessage>> requestFunc,
         string? idempotencyKey,
-        bool rotateKeyOnServerError,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool retryUnknownOutcomes = true)
     {
         SendlyException? lastException = null;
+        var waitedOut = false;
 
         for (int attempt = 0; attempt <= _maxRetries; attempt++)
         {
-            if (attempt > 0)
+            if (attempt > 0 && !waitedOut)
             {
                 var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt - 1));
                 await Task.Delay(delay, cancellationToken);
             }
+            waitedOut = false;
 
             try
             {
@@ -466,27 +499,31 @@ public class SendlyClient : IDisposable
             catch (ValidationException) { throw; }
             catch (NotFoundException) { throw; }
             catch (InsufficientCreditsException) { throw; }
+            catch (RateLimitException e) when (!WaitsOut(e)) { throw; }
             catch (RateLimitException e)
             {
-                if (e.RetryAfter.HasValue)
+                if (attempt < _maxRetries && e.RetryAfter is { } wait && wait > TimeSpan.Zero)
                 {
-                    await Task.Delay(e.RetryAfter.Value, cancellationToken);
+                    await Task.Delay(wait, cancellationToken);
+                    waitedOut = true;
                 }
                 lastException = e;
             }
+            catch (SendlyException e) when (e.StatusCode is >= 400 and < 500 and not 408) { throw; }
+            catch (SendlyException) when (!retryUnknownOutcomes) { throw; }
             catch (SendlyException e)
             {
-                if (rotateKeyOnServerError && idempotencyKey != null && e.StatusCode >= 500)
-                    idempotencyKey = GenerateIdempotencyKey();
                 lastException = e;
             }
             catch (HttpRequestException e)
             {
                 lastException = new NetworkException($"Request failed: {e.Message}", e);
+                if (!retryUnknownOutcomes) throw lastException;
             }
             catch (TaskCanceledException e) when (!cancellationToken.IsCancellationRequested)
             {
                 lastException = new NetworkException("Request timed out", e);
+                if (!retryUnknownOutcomes) throw lastException;
             }
         }
 
@@ -549,6 +586,7 @@ public class SendlyClient : IDisposable
         JsonDocument? errorDoc = null;
         string message = "Unknown error";
         string? apiErrorCode = null;
+        int? bodyRetryAfter = null;
         JsonElement? responseBody = null;
         var fieldErrors = new List<SendlyFieldError>();
 
@@ -560,6 +598,9 @@ public class SendlyClient : IDisposable
                 responseBody = root.Clone();
             if (root.TryGetProperty("error", out var errProp) && errProp.ValueKind == JsonValueKind.String)
                 apiErrorCode = errProp.GetString();
+            if (root.TryGetProperty("retryAfter", out var retryProp) && retryProp.ValueKind == JsonValueKind.Number &&
+                retryProp.TryGetInt32(out var retrySeconds))
+                bodyRetryAfter = retrySeconds;
             if (root.TryGetProperty("message", out var msgProp) && msgProp.ValueKind == JsonValueKind.String)
                 message = msgProp.GetString() ?? message;
             else if (apiErrorCode != null)
@@ -593,8 +634,8 @@ public class SendlyClient : IDisposable
             HttpStatusCode.Unauthorized => new AuthenticationException(message),
             HttpStatusCode.PaymentRequired => new InsufficientCreditsException(message),
             HttpStatusCode.NotFound => new NotFoundException(message),
-            HttpStatusCode.TooManyRequests => CreateRateLimitException(message, response),
-            HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity => new ValidationException(message),
+            HttpStatusCode.TooManyRequests => CreateRateLimitException(message, response, apiErrorCode, bodyRetryAfter),
+            HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity => new ValidationException(message, (int)response.StatusCode),
             _ => new SendlyException(message, (int)response.StatusCode)
         };
         exception.ApiErrorCode = apiErrorCode;
@@ -603,9 +644,9 @@ public class SendlyClient : IDisposable
         throw exception;
     }
 
-    private static RateLimitException CreateRateLimitException(string message, HttpResponseMessage response)
+    private static RateLimitException CreateRateLimitException(string message, HttpResponseMessage response, string? apiErrorCode, int? bodyRetryAfter)
     {
-        TimeSpan? retryAfter = null;
+        TimeSpan? retryAfter = bodyRetryAfter.HasValue ? TimeSpan.FromSeconds(bodyRetryAfter.Value) : null;
 
         if (response.Headers.TryGetValues("Retry-After", out var values))
         {
@@ -616,7 +657,7 @@ public class SendlyClient : IDisposable
             }
         }
 
-        return new RateLimitException(message, retryAfter);
+        return new RateLimitException(message, retryAfter, apiErrorCode);
     }
 
     /// <summary>

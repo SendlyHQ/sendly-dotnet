@@ -50,34 +50,63 @@ public class ScheduledMessage
     public string Status { get; set; } = string.Empty;
 
     /// <summary>
-    /// Scheduled delivery time.
+    /// Scheduled delivery time. When quiet hours moved the message, this is
+    /// the new time.
     /// </summary>
-    [JsonPropertyName("scheduled_at")]
+    [JsonPropertyName("scheduledAt")]
     public DateTime ScheduledAt { get; set; }
+
+    /// <summary>
+    /// Time zone the message was scheduled in (for example <c>UTC</c>).
+    /// </summary>
+    [JsonPropertyName("timezone")]
+    public string? Timezone { get; set; }
 
     /// <summary>
     /// Credits reserved for this message.
     /// </summary>
-    [JsonPropertyName("credits_reserved")]
+    [JsonPropertyName("creditsReserved")]
     public int CreditsReserved { get; set; }
+
+    /// <summary>
+    /// Number of SMS segments.
+    /// </summary>
+    [JsonPropertyName("segments")]
+    public int? Segments { get; set; }
+
+    /// <summary>
+    /// Sender type: <c>number_pool</c> for US and Canadian recipients,
+    /// <c>alphanumeric</c> for everyone else. See <see cref="Message.SenderTypes"/>.
+    /// </summary>
+    [JsonPropertyName("senderType")]
+    public string? SenderType { get; set; }
 
     /// <summary>
     /// Creation timestamp.
     /// </summary>
-    [JsonPropertyName("created_at")]
+    [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
-    /// Cancellation timestamp (if cancelled).
+    /// Cancellation timestamp (if cancelled). Returned by
+    /// <c>GetScheduledAsync</c>; the schedule and list responses leave it null.
     /// </summary>
-    [JsonPropertyName("cancelled_at")]
+    [JsonPropertyName("cancelledAt")]
     public DateTime? CancelledAt { get; set; }
 
     /// <summary>
-    /// Sent timestamp (if sent).
+    /// Sent timestamp (if sent). Returned by <c>GetScheduledAsync</c>; the
+    /// schedule and list responses leave it null.
     /// </summary>
-    [JsonPropertyName("sent_at")]
+    [JsonPropertyName("sentAt")]
     public DateTime? SentAt { get; set; }
+
+    /// <summary>
+    /// Custom metadata attached when the message was scheduled. Returned by
+    /// <c>ListScheduledAsync</c>; the other responses leave it null.
+    /// </summary>
+    [JsonPropertyName("metadata")]
+    public Dictionary<string, object>? Metadata { get; set; }
 
     /// <summary>
     /// Error message (if failed).

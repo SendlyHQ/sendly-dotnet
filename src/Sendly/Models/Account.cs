@@ -15,22 +15,42 @@ public class Credits
     public int Balance { get; set; }
 
     /// <summary>
-    /// Available credits for use.
+    /// Credits available to spend: the balance less what is reserved (plus
+    /// any overage allowance on a pooled enterprise balance).
     /// </summary>
-    [JsonPropertyName("available_balance")]
+    [JsonPropertyName("availableBalance")]
     public int AvailableBalance { get; set; }
 
     /// <summary>
-    /// Credits pending from purchases.
+    /// Credits pending from purchases. The API does not report pending
+    /// credits, so this is always 0.
     /// </summary>
     [JsonPropertyName("pending_credits")]
     public int PendingCredits { get; set; }
 
     /// <summary>
-    /// Credits reserved for scheduled messages.
+    /// Credits reserved for scheduled messages (the API's <c>reservedBalance</c>).
     /// </summary>
-    [JsonPropertyName("reserved_credits")]
+    [JsonPropertyName("reservedBalance")]
     public int ReservedCredits { get; set; }
+
+    /// <summary>
+    /// Credits reserved for scheduled messages. The same value as
+    /// <see cref="ReservedCredits"/>, under the API's name.
+    /// </summary>
+    [JsonIgnore]
+    public int ReservedBalance
+    {
+        get => ReservedCredits;
+        set => ReservedCredits = value;
+    }
+
+    /// <summary>
+    /// How the workspace pays for messages: <c>prepaid</c>, or <c>pooled</c>
+    /// when it draws on an enterprise credit pool.
+    /// </summary>
+    [JsonPropertyName("billingMode")]
+    public string? BillingMode { get; set; }
 
     /// <summary>
     /// Currency code.
@@ -63,10 +83,26 @@ public class CreditTransaction
     /// </summary>
     public static class Types
     {
+        /// <summary>Credits bought, including auto-recharges.</summary>
         public const string Purchase = "purchase";
+
         public const string Usage = "usage";
         public const string Refund = "refund";
         public const string Bonus = "bonus";
+
+        /// <summary>Credits moved between workspaces.</summary>
+        public const string Transfer = "transfer";
+
+        /// <summary>Credits granted by Sendly.</summary>
+        public const string AdminGrant = "admin_grant";
+
+        /// <summary>Test credits added by Sendly.</summary>
+        public const string AdminSeed = "admin_seed";
+
+        /// <summary>
+        /// Never recorded: a credit granted by Sendly is <see cref="AdminGrant"/>,
+        /// and one taken away is <see cref="Usage"/>.
+        /// </summary>
         public const string Adjustment = "adjustment";
     }
 
@@ -281,28 +317,60 @@ public class ApiKey
     public string Prefix { get; set; } = string.Empty;
 
     /// <summary>
+    /// Key type: <c>test</c> or <c>live</c>.
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    /// <summary>
+    /// Permission scopes granted to the key.
+    /// </summary>
+    [JsonPropertyName("scopes")]
+    public List<string>? Scopes { get; set; }
+
+    /// <summary>
+    /// Permission scopes granted to the key, under the name the key list
+    /// uses. The same values as <see cref="Scopes"/>.
+    /// </summary>
+    [JsonPropertyName("permissions")]
+    public List<string>? Permissions { get; set; }
+
+    /// <summary>
     /// Last time the key was used.
     /// </summary>
-    [JsonPropertyName("last_used_at")]
+    [JsonPropertyName("lastUsedAt")]
     public DateTime? LastUsedAt { get; set; }
 
     /// <summary>
     /// Creation timestamp.
     /// </summary>
-    [JsonPropertyName("created_at")]
+    [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
     /// Expiration timestamp.
     /// </summary>
-    [JsonPropertyName("expires_at")]
+    [JsonPropertyName("expiresAt")]
     public DateTime? ExpiresAt { get; set; }
 
     /// <summary>
-    /// Whether the key is active.
+    /// Whether the key is active. False once the key is revoked.
     /// </summary>
-    [JsonPropertyName("is_active")]
+    [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Whether the key has been revoked.
+    /// </summary>
+    [JsonPropertyName("isRevoked")]
+    public bool? IsRevoked { get; set; }
+
+    /// <summary>
+    /// When the key was revoked. Returned by <c>GetApiKeyAsync</c>; the key
+    /// list leaves it null.
+    /// </summary>
+    [JsonPropertyName("revokedAt")]
+    public DateTime? RevokedAt { get; set; }
 
     /// <summary>
     /// Whether the API key is expired.
@@ -314,8 +382,15 @@ public class ApiKey
     /// </summary>
     internal static ApiKey FromJson(JsonElement element, JsonSerializerOptions options)
     {
-        return JsonSerializer.Deserialize<ApiKey>(element.GetRawText(), options)
+        var apiKey = JsonSerializer.Deserialize<ApiKey>(element.GetRawText(), options)
             ?? new ApiKey();
+        if (apiKey.IsRevoked == null && element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty("isActive", out var isActive) &&
+            (isActive.ValueKind == JsonValueKind.True || isActive.ValueKind == JsonValueKind.False))
+            apiKey.IsRevoked = !apiKey.IsActive;
+        if (apiKey.Permissions == null && apiKey.Scopes != null)
+            apiKey.Permissions = new List<string>(apiKey.Scopes);
+        return apiKey;
     }
 }
 
@@ -383,9 +458,14 @@ public class CreateApiKeyResponse
     {
         var response = new CreateApiKeyResponse();
 
-        if (element.TryGetProperty("api_key", out var apiKeyElement))
+        if ((element.TryGetProperty("apiKey", out var apiKeyElement) || element.TryGetProperty("api_key", out apiKeyElement)) &&
+            apiKeyElement.ValueKind == JsonValueKind.Object)
         {
             response.ApiKey = ApiKey.FromJson(apiKeyElement, options);
+        }
+        else if (element.ValueKind == JsonValueKind.Object && element.TryGetProperty("id", out _))
+        {
+            response.ApiKey = ApiKey.FromJson(element, options);
         }
 
         if (element.TryGetProperty("key", out var keyElement))
@@ -409,7 +489,23 @@ public class CreateApiKeyOptions
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Optional expiration date.
+    /// Key type: <c>test</c> (the default) or <c>live</c>. A live key needs a
+    /// verified business and a credit balance; the API answers 403
+    /// <c>verification_required</c> or 402 <c>credits_required</c> otherwise.
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "test";
+
+    /// <summary>
+    /// Permission scopes to grant, such as <c>sms:send</c>. The key you call
+    /// with must hold every scope you grant. Omitted when null, and the new
+    /// key then gets the calling key's scopes.
+    /// </summary>
+    [JsonPropertyName("scopes")]
+    public List<string>? Scopes { get; set; }
+
+    /// <summary>
+    /// Optional expiration date (ISO 8601).
     /// </summary>
     [JsonPropertyName("expires_at")]
     public string? ExpiresAt { get; set; }
@@ -529,24 +625,39 @@ public class RotateApiKeyResponse
 }
 
 /// <summary>
-/// Usage statistics for an API key.
+/// Usage statistics for an API key, covering its most recent 100 requests.
 /// </summary>
 public class ApiKeyUsage
 {
     /// <summary>
-    /// Total number of requests made with this key.
+    /// The key's identifier.
+    /// </summary>
+    [JsonPropertyName("keyId")]
+    public string? KeyId { get; set; }
+
+    /// <summary>
+    /// The key's display name.
+    /// </summary>
+    [JsonPropertyName("keyName")]
+    public string? KeyName { get; set; }
+
+    /// <summary>
+    /// Number of requests made with this key (the API counts at most the
+    /// last 100).
     /// </summary>
     [JsonPropertyName("totalRequests")]
     public long TotalRequests { get; set; }
 
     /// <summary>
-    /// Number of successful requests.
+    /// Number of successful requests. The API does not report this, so it is
+    /// always 0; count <see cref="RecentRequests"/> by status code instead.
     /// </summary>
     [JsonPropertyName("successfulRequests")]
     public long SuccessfulRequests { get; set; }
 
     /// <summary>
-    /// Number of failed requests.
+    /// Number of failed requests. The API does not report this, so it is
+    /// always 0; count <see cref="RecentRequests"/> by status code instead.
     /// </summary>
     [JsonPropertyName("failedRequests")]
     public long FailedRequests { get; set; }
@@ -558,48 +669,156 @@ public class ApiKeyUsage
     public DateTime? LastRequestAt { get; set; }
 
     /// <summary>
-    /// Credits used by this key.
+    /// Credits used by those requests.
     /// </summary>
     [JsonPropertyName("creditsUsed")]
     public long CreditsUsed { get; set; }
+
+    /// <summary>
+    /// The key's most recent requests, newest first (at most 20).
+    /// </summary>
+    [JsonPropertyName("recentRequests")]
+    public List<ApiKeyUsageRequest> RecentRequests { get; set; } = new();
+
+    /// <summary>
+    /// How many requests went to each endpoint, busiest first.
+    /// </summary>
+    [JsonPropertyName("endpointBreakdown")]
+    public List<ApiKeyUsageEndpoint> EndpointBreakdown { get; set; } = new();
 
     /// <summary>
     /// Creates an ApiKeyUsage from a JSON element.
     /// </summary>
     internal static ApiKeyUsage FromJson(JsonElement element, JsonSerializerOptions options)
     {
-        return JsonSerializer.Deserialize<ApiKeyUsage>(element.GetRawText(), options)
+        var usage = JsonSerializer.Deserialize<ApiKeyUsage>(element.GetRawText(), options)
             ?? new ApiKeyUsage();
+        usage.RecentRequests ??= new List<ApiKeyUsageRequest>();
+        usage.EndpointBreakdown ??= new List<ApiKeyUsageEndpoint>();
+
+        if (element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty("summary", out var summary) &&
+            summary.ValueKind == JsonValueKind.Object)
+        {
+            if (summary.TryGetProperty("totalRequests", out var total) && total.TryGetInt64(out var totalRequests))
+                usage.TotalRequests = totalRequests;
+            if (summary.TryGetProperty("totalCredits", out var credits) && credits.TryGetInt64(out var totalCredits))
+                usage.CreditsUsed = totalCredits;
+            if (summary.TryGetProperty("lastUsed", out var lastUsed) &&
+                lastUsed.ValueKind == JsonValueKind.String &&
+                lastUsed.TryGetDateTime(out var lastUsedAt))
+                usage.LastRequestAt = lastUsedAt;
+        }
+
+        return usage;
     }
 }
 
 /// <summary>
-/// Account verification status.
+/// One request made with an API key.
+/// </summary>
+public class ApiKeyUsageRequest
+{
+    /// <summary>Request path, such as <c>/api/v1/messages</c>.</summary>
+    [JsonPropertyName("endpoint")]
+    public string Endpoint { get; set; } = string.Empty;
+
+    /// <summary>HTTP method.</summary>
+    [JsonPropertyName("method")]
+    public string Method { get; set; } = string.Empty;
+
+    /// <summary>HTTP status code the API answered with.</summary>
+    [JsonPropertyName("statusCode")]
+    public int? StatusCode { get; set; }
+
+    /// <summary>Credits the request used.</summary>
+    [JsonPropertyName("creditsUsed")]
+    public int CreditsUsed { get; set; }
+
+    /// <summary>When the request was made.</summary>
+    [JsonPropertyName("createdAt")]
+    public DateTime? CreatedAt { get; set; }
+}
+
+/// <summary>
+/// How many of an API key's requests went to one endpoint.
+/// </summary>
+public class ApiKeyUsageEndpoint
+{
+    /// <summary>Method and path, such as <c>POST /api/v1/messages</c>.</summary>
+    [JsonPropertyName("endpoint")]
+    public string Endpoint { get; set; } = string.Empty;
+
+    /// <summary>Number of requests.</summary>
+    [JsonPropertyName("count")]
+    public int Count { get; set; }
+}
+
+/// <summary>
+/// The business verification of the account's workspace. Every value is
+/// empty when the workspace has not submitted one.
 /// </summary>
 public class AccountVerification
 {
     /// <summary>
-    /// Whether email is verified.
+    /// Verification status, such as <c>pending</c>, <c>processing</c>,
+    /// <c>action_required</c>, <c>verified</c>, <c>approved</c> (a business
+    /// verified for international sending) or <c>rejected</c>; null when the
+    /// workspace has no verification.
+    /// </summary>
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    /// <summary>
+    /// What was verified: <c>toll_free</c>, <c>international</c> or <c>both</c>.
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    /// <summary>
+    /// Where the business sends: <c>us</c>, <c>intl</c> or <c>both</c>.
+    /// </summary>
+    [JsonPropertyName("region")]
+    public string? Region { get; set; }
+
+    /// <summary>
+    /// When the verification was submitted.
+    /// </summary>
+    [JsonPropertyName("submittedAt")]
+    public DateTime? SubmittedAt { get; set; }
+
+    /// <summary>
+    /// When the verification last changed.
+    /// </summary>
+    [JsonPropertyName("updatedAt")]
+    public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Whether email is verified. The API does not report this, so it is
+    /// false unless you set it.
     /// </summary>
     [JsonPropertyName("email_verified")]
     public bool EmailVerified { get; set; }
 
     /// <summary>
-    /// Whether phone is verified.
+    /// Whether phone is verified. The API does not report this, so it is
+    /// false unless you set it.
     /// </summary>
     [JsonPropertyName("phone_verified")]
     public bool PhoneVerified { get; set; }
 
     /// <summary>
-    /// Whether identity is verified.
+    /// Whether identity is verified. The API does not report this, so it is
+    /// false unless you set it.
     /// </summary>
     [JsonPropertyName("identity_verified")]
     public bool IdentityVerified { get; set; }
 
     /// <summary>
-    /// Whether fully verified.
+    /// Whether the business is verified: <see cref="Status"/> is
+    /// <c>verified</c> or <c>approved</c>.
     /// </summary>
-    public bool IsFullyVerified => EmailVerified && PhoneVerified && IdentityVerified;
+    public bool IsFullyVerified => Status is "verified" or "approved" || (EmailVerified && PhoneVerified && IdentityVerified);
 }
 
 /// <summary>
@@ -608,22 +827,94 @@ public class AccountVerification
 public class AccountLimits
 {
     /// <summary>
-    /// Maximum messages per second.
+    /// Maximum messages per minute.
+    /// </summary>
+    [JsonPropertyName("messagesPerMinute")]
+    public int MessagesPerMinute { get; set; }
+
+    /// <summary>
+    /// Maximum messages per second. The API does not report this, so it is
+    /// always 10.
     /// </summary>
     [JsonPropertyName("messages_per_second")]
     public int MessagesPerSecond { get; set; } = 10;
 
     /// <summary>
-    /// Maximum messages per day.
+    /// Maximum messages per day: 100 for a test key, 10,000 for a live key.
     /// </summary>
-    [JsonPropertyName("messages_per_day")]
+    [JsonPropertyName("messagesPerDay")]
     public int MessagesPerDay { get; set; } = 10000;
 
     /// <summary>
-    /// Maximum batch size.
+    /// Maximum batch size. The API does not report this, so it is always
+    /// 1000.
     /// </summary>
     [JsonPropertyName("max_batch_size")]
     public int MaxBatchSize { get; set; } = 1000;
+}
+
+/// <summary>
+/// The workspace an API key belongs to.
+/// </summary>
+public class AccountOrganization
+{
+    /// <summary>Workspace identifier (the <c>organization_id</c> in webhook payloads).</summary>
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>Workspace name.</summary>
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    /// <summary>Whether this is the account's personal workspace.</summary>
+    [JsonPropertyName("isPersonal")]
+    public bool IsPersonal { get; set; }
+}
+
+/// <summary>
+/// The credit balance reported with the account.
+/// </summary>
+public class AccountCredits
+{
+    /// <summary>Credit balance.</summary>
+    [JsonPropertyName("balance")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int Balance { get; set; }
+
+    /// <summary>Credits reserved for scheduled messages.</summary>
+    [JsonPropertyName("reservedBalance")]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public int ReservedBalance { get; set; }
+}
+
+/// <summary>
+/// The API key the request was made with.
+/// </summary>
+public class AccountApiKey
+{
+    /// <summary>Key identifier.</summary>
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>Key display name.</summary>
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    /// <summary>Key type: <c>test</c> or <c>live</c>.</summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+
+    /// <summary>Permission scopes the key holds.</summary>
+    [JsonPropertyName("scopes")]
+    public List<string>? Scopes { get; set; }
+
+    /// <summary>When the key was created.</summary>
+    [JsonPropertyName("createdAt")]
+    public DateTime? CreatedAt { get; set; }
+
+    /// <summary>When the key was last used.</summary>
+    [JsonPropertyName("lastUsedAt")]
+    public DateTime? LastUsedAt { get; set; }
 }
 
 /// <summary>
@@ -644,22 +935,43 @@ public class Account
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
-    /// Account holder name.
+    /// Account holder name. The API does not report it, so it is null.
     /// </summary>
     [JsonPropertyName("name")]
     public string? Name { get; set; }
 
     /// <summary>
-    /// Company name.
+    /// Company name. The API does not report it, so it is null; see
+    /// <see cref="Organization"/> for the workspace name.
     /// </summary>
     [JsonPropertyName("company_name")]
     public string? CompanyName { get; set; }
 
     /// <summary>
-    /// Verification status.
+    /// The workspace the API key belongs to, or null for a key without one.
+    /// </summary>
+    [JsonPropertyName("organization")]
+    public AccountOrganization? Organization { get; set; }
+
+    /// <summary>
+    /// Credit balance. <see cref="Sendly.Resources.AccountResource.GetCreditsAsync"/>
+    /// also reports what is available to spend.
+    /// </summary>
+    [JsonPropertyName("credits")]
+    public AccountCredits? Credits { get; set; }
+
+    /// <summary>
+    /// Business verification. Never null: its values are empty when the
+    /// workspace has no verification.
     /// </summary>
     [JsonPropertyName("verification")]
     public AccountVerification Verification { get; set; } = new();
+
+    /// <summary>
+    /// The API key the request was made with.
+    /// </summary>
+    [JsonPropertyName("apiKey")]
+    public AccountApiKey? ApiKey { get; set; }
 
     /// <summary>
     /// Rate limits.
@@ -678,7 +990,25 @@ public class Account
     /// </summary>
     internal static Account FromJson(JsonElement element, JsonSerializerOptions options)
     {
-        return JsonSerializer.Deserialize<Account>(element.GetRawText(), options)
+        var account = JsonSerializer.Deserialize<Account>(element.GetRawText(), options)
             ?? new Account();
+
+        if (element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty("user", out var user) &&
+            user.ValueKind == JsonValueKind.Object)
+        {
+            if (user.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String)
+                account.Id = id.GetString() ?? string.Empty;
+            if (user.TryGetProperty("email", out var email) && email.ValueKind == JsonValueKind.String)
+                account.Email = email.GetString() ?? string.Empty;
+            if (user.TryGetProperty("createdAt", out var createdAt) &&
+                createdAt.ValueKind == JsonValueKind.String &&
+                createdAt.TryGetDateTime(out var created))
+                account.CreatedAt = created;
+        }
+
+        account.Verification ??= new AccountVerification();
+        account.Limits ??= new AccountLimits();
+        return account;
     }
 }

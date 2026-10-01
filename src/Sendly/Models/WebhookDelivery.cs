@@ -179,6 +179,12 @@ public class WebhookTestResult
     public bool Success { get; set; }
 
     /// <summary>
+    /// What happened, such as <c>Test webhook delivered successfully in 123ms</c>.
+    /// </summary>
+    [JsonPropertyName("message")]
+    public string? Message { get; set; }
+
+    /// <summary>
     /// HTTP status code from the endpoint.
     /// </summary>
     [JsonPropertyName("status_code")]
@@ -201,8 +207,25 @@ public class WebhookTestResult
     /// </summary>
     internal static WebhookTestResult FromJson(JsonElement element, JsonSerializerOptions options)
     {
-        return JsonSerializer.Deserialize<WebhookTestResult>(element.GetRawText(), options)
+        var result = JsonSerializer.Deserialize<WebhookTestResult>(element.GetRawText(), options)
             ?? new WebhookTestResult();
+
+        if (element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty("delivery", out var delivery) &&
+            delivery.ValueKind == JsonValueKind.Object)
+        {
+            if (delivery.TryGetProperty("status_code", out var statusCode) &&
+                statusCode.ValueKind == JsonValueKind.Number &&
+                statusCode.TryGetInt32(out var code))
+                result.StatusCode = code;
+            if (delivery.TryGetProperty("response_time", out var responseTime) &&
+                responseTime.ValueKind == JsonValueKind.Number)
+                result.ResponseTimeMs = (int)Math.Round(responseTime.GetDouble());
+            if (delivery.TryGetProperty("error", out var error) && error.ValueKind == JsonValueKind.String)
+                result.Error = error.GetString();
+        }
+
+        return result;
     }
 }
 

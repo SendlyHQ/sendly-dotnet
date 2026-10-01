@@ -68,12 +68,33 @@ public class CampaignsResource
         return JsonSerializer.Deserialize<CampaignPreview>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
+    /// <summary>
+    /// Sends a draft or scheduled campaign now. The API answers with the
+    /// message batch the send created, not the campaign, so the campaign
+    /// returned carries only <see cref="Campaign.Id"/>,
+    /// <see cref="Campaign.BatchId"/>, <see cref="Campaign.RecipientCount"/>,
+    /// <see cref="Campaign.SentCount"/>, <see cref="Campaign.FailedCount"/>
+    /// and <see cref="Campaign.CreditsUsed"/>, and its
+    /// <see cref="Campaign.Status"/> is the batch's status, such as
+    /// <c>completed</c>, <c>partial_failure</c>, <c>failed</c> or
+    /// <c>processing</c>. The campaign itself is now <c>completed</c>; call
+    /// <see cref="GetAsync"/> for its name, text and dates.
+    /// </summary>
     public async Task<Campaign> SendAsync(
         string id,
         CancellationToken cancellationToken = default)
     {
         var doc = await _client.PostAsync($"/campaigns/{Uri.EscapeDataString(id)}/send", new { }, cancellationToken);
-        return JsonSerializer.Deserialize<Campaign>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+        var root = doc.RootElement;
+        var campaign = JsonSerializer.Deserialize<Campaign>(root.GetRawText(), _client.JsonOptions)!;
+        campaign.Id = id;
+        if (root.TryGetProperty("total", out var total) && total.TryGetInt32(out var recipientCount))
+            campaign.RecipientCount = recipientCount;
+        if (root.TryGetProperty("sent", out var sent) && sent.TryGetInt32(out var sentCount))
+            campaign.SentCount = sentCount;
+        if (root.TryGetProperty("failed", out var failed) && failed.TryGetInt32(out var failedCount))
+            campaign.FailedCount = failedCount;
+        return campaign;
     }
 
     public async Task<Campaign> ScheduleAsync(

@@ -316,6 +316,20 @@ public class ExceptionsTests
     }
 
     [Fact]
+    public void RateLimitException_WithApiErrorCode_CarriesIt()
+    {
+        var exception = new RateLimitException(
+            "Too many failed API key attempts. Try again in 300 seconds.",
+            TimeSpan.FromSeconds(300),
+            "too_many_failed_key_attempts");
+
+        Assert.Equal("too_many_failed_key_attempts", exception.ApiErrorCode);
+        Assert.Equal("RATE_LIMIT_EXCEEDED", exception.ErrorCode);
+        Assert.Equal(TimeSpan.FromSeconds(300), exception.RetryAfter);
+        Assert.Equal(429, exception.StatusCode);
+    }
+
+    [Fact]
     public void RateLimitException_InheritsFromSendlyException()
     {
         // Assert

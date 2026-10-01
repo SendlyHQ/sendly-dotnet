@@ -35,13 +35,29 @@ public class Message
     }
 
     /// <summary>
-    /// Sender type constants.
+    /// Sender type constants: the values of <see cref="SenderType"/>.
     /// </summary>
     public static class SenderTypes
     {
+        /// <summary>Sent from a toll-free number in your number pool (US and Canadian recipients).</summary>
+        public const string NumberPool = "number_pool";
+
+        /// <summary>Sent from your alphanumeric sender ID (recipients outside the US and Canada).</summary>
+        public const string Alphanumeric = "alphanumeric";
+
+        /// <summary>Sent from a number of yours: the <c>From</c> you passed, or the number your workspace sends from.</summary>
+        public const string Explicit = "explicit";
+
+        [Obsolete("The API never sends this value. SenderType is number_pool, alphanumeric or explicit (see NumberPool, Alphanumeric and Explicit).")]
         public const string User = "user";
+
+        [Obsolete("The API never sends this value. SenderType is number_pool, alphanumeric or explicit (see NumberPool, Alphanumeric and Explicit).")]
         public const string Api = "api";
+
+        [Obsolete("The API never sends this value. SenderType is number_pool, alphanumeric or explicit (see NumberPool, Alphanumeric and Explicit).")]
         public const string System = "system";
+
+        [Obsolete("The API never sends this value. SenderType is number_pool, alphanumeric or explicit (see NumberPool, Alphanumeric and Explicit).")]
         public const string Campaign = "campaign";
     }
 
@@ -90,19 +106,24 @@ public class Message
     /// <summary>
     /// Credits consumed.
     /// </summary>
-    [JsonPropertyName("credits_used")]
+    [JsonPropertyName("creditsUsed")]
     public int CreditsUsed { get; set; }
 
     /// <summary>
-    /// Whether this is a sandbox message.
+    /// Whether this is a sandbox message. Returned by <c>GetAsync</c> and
+    /// <c>ListAsync</c>; a send response reports a simulated send through
+    /// <see cref="Simulated"/> instead.
     /// </summary>
-    [JsonPropertyName("is_sandbox")]
+    [JsonPropertyName("isSandbox")]
     public bool IsSandbox { get; set; }
 
     /// <summary>
-    /// Type of sender (user, api, system, campaign).
+    /// Which sender the message went out from: <c>number_pool</c>,
+    /// <c>alphanumeric</c> or <c>explicit</c> (see <see cref="SenderTypes"/>).
+    /// Returned by a live send; null on a simulated send and on messages read
+    /// back with <c>GetAsync</c> or <c>ListAsync</c>.
     /// </summary>
-    [JsonPropertyName("sender_type")]
+    [JsonPropertyName("senderType")]
     public string? SenderType { get; set; }
 
     /// <summary>
@@ -118,19 +139,36 @@ public class Message
     public string? Warning { get; set; }
 
     /// <summary>
-    /// Optional note from the sender.
+    /// A note on which sender a live send used, when there is one to add.
     /// </summary>
-    [JsonPropertyName("sender_note")]
+    [JsonPropertyName("senderNote")]
     public string? SenderNote { get; set; }
+
+    /// <summary>
+    /// True when a send was simulated rather than delivered to a handset:
+    /// with a test key or to a sandbox number, and with a live key when the
+    /// account is not set up to send to the destination yet. Null on a real
+    /// send and on messages read back with <c>GetAsync</c> or <c>ListAsync</c>
+    /// (see <see cref="IsSandbox"/>).
+    /// </summary>
+    [JsonPropertyName("simulated")]
+    public bool? Simulated { get; set; }
+
+    /// <summary>
+    /// Why a live-key send was simulated instead of delivered, when it was.
+    /// </summary>
+    [JsonPropertyName("simulatedReason")]
+    public string? SimulatedReason { get; set; }
 
     /// <summary>
     /// Creation timestamp.
     /// </summary>
-    [JsonPropertyName("created_at")]
+    [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
-    /// Last update timestamp.
+    /// Last update timestamp. The API does not send one, so this stays at
+    /// its default.
     /// </summary>
     [JsonPropertyName("updated_at")]
     public DateTime UpdatedAt { get; set; }
@@ -138,25 +176,25 @@ public class Message
     /// <summary>
     /// Delivery timestamp (if delivered).
     /// </summary>
-    [JsonPropertyName("delivered_at")]
+    [JsonPropertyName("deliveredAt")]
     public DateTime? DeliveredAt { get; set; }
 
     /// <summary>
     /// Error code (if failed).
     /// </summary>
-    [JsonPropertyName("error_code")]
+    [JsonPropertyName("errorCode")]
     public string? ErrorCode { get; set; }
 
     /// <summary>
-    /// Error message (if failed).
+    /// Error message (if failed): the API's <c>error</c> field.
     /// </summary>
-    [JsonPropertyName("error_message")]
+    [JsonPropertyName("error")]
     public string? ErrorMessage { get; set; }
 
     /// <summary>
     /// Number of delivery retry attempts.
     /// </summary>
-    [JsonPropertyName("retry_count")]
+    [JsonPropertyName("retryCount")]
     public int RetryCount { get; set; }
 
     /// <summary>

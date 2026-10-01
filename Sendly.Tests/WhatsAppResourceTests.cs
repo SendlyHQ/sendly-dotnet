@@ -427,11 +427,10 @@ public class WhatsAppResourceTests : IDisposable
     [Fact]
     public async Task SendersUpdateProfileAsync_WithTestKey_ThrowsSendlyException()
     {
-        // Arrange — 403 is retryable in the client, so queue 1 initial + 3 retries
+        // Arrange
         const string forbidden =
             @"{""error"": ""whatsapp_requires_live_key"", ""message"": ""WhatsApp requires a live API key. Test keys cannot update sender profiles.""}";
-        for (var i = 0; i < 4; i++)
-            _mockHandler.QueueResponse(HttpStatusCode.Forbidden, forbidden);
+        _mockHandler.QueueResponse(HttpStatusCode.Forbidden, forbidden);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<SendlyException>(

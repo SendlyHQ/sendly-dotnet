@@ -1,5 +1,6 @@
 using System.Net;
 using System.Reflection;
+using System.Text.Json;
 using Sendly.Exceptions;
 using Sendly.Models;
 using Sendly.Tests.Fixtures;
@@ -36,6 +37,165 @@ public class MessagesScheduleTests : IDisposable
         _mockHandler?.Dispose();
     }
 
+    private const string ScheduleResponseJson = @"{
+        ""id"": ""schd_1"",
+        ""to"": ""+15551234567"",
+        ""text"": ""hi"",
+        ""scheduledAt"": ""2030-01-01T10:00:00.000Z"",
+        ""timezone"": ""UTC"",
+        ""status"": ""scheduled"",
+        ""creditsReserved"": 2,
+        ""segments"": 1,
+        ""senderType"": ""number_pool"",
+        ""createdAt"": ""2026-09-25T09:00:00.000Z""
+    }";
+
+    private async Task<JsonElement> JsonBodyOfLastRequest()
+    {
+        using var doc = JsonDocument.Parse(await _mockHandler.LastRequest!.Content!.ReadAsStringAsync());
+        return doc.RootElement.Clone();
+    }
+
+    #region Wire shape
+
+    [Fact]
+    public async Task ScheduleAsync_SendsScheduledAtKeyTheApiReads()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Created, ScheduleResponseJson);
+
+        await _client.Messages.ScheduleAsync("+15551234567", "hi", "2030-01-01T10:00:00Z");
+
+        var body = await JsonBodyOfLastRequest();
+        Assert.True(body.TryGetProperty("scheduledAt", out var scheduledAt));
+        Assert.Equal("2030-01-01T10:00:00Z", scheduledAt.GetString());
+        Assert.False(body.TryGetProperty("scheduled_at", out _));
+    }
+
+    [Fact]
+    public async Task ScheduleAsync_WithRequestAndIdempotencyKey_SendsScheduledAtKeyTheApiReads()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Created, ScheduleResponseJson);
+
+        await _client.Messages.ScheduleAsync(
+            new ScheduleMessageRequest("+15551234567", "hi", "2030-01-01T10:00:00Z"),
+            new IdempotentRequestOptions { IdempotencyKey = "sched-1" });
+
+        var body = await JsonBodyOfLastRequest();
+        Assert.True(body.TryGetProperty("scheduledAt", out _));
+        Assert.False(body.TryGetProperty("scheduled_at", out _));
+    }
+
+    [Fact]
+    public async Task ScheduleAsync_ReadsTheScheduleResponseTheApiSends()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Created, ScheduleResponseJson);
+
+        var message = await _client.Messages.ScheduleAsync("+15551234567", "hi", "2030-01-01T10:00:00Z");
+
+        Assert.Equal(new DateTime(2030, 1, 1, 10, 0, 0, DateTimeKind.Utc), message.ScheduledAt.ToUniversalTime());
+        Assert.Equal(2, message.CreditsReserved);
+        Assert.Equal(new DateTime(2026, 9, 25, 9, 0, 0, DateTimeKind.Utc), message.CreatedAt.ToUniversalTime());
+        Assert.Equal("UTC", message.Timezone);
+        Assert.Equal(1, message.Segments);
+        Assert.Equal("number_pool", message.SenderType);
+    }
+
+    [Fact]
+    public async Task ScheduleAsync_WithObjectInitializer_SendsTheFieldsSet()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Created, ScheduleResponseJson);
+
+        await _client.Messages.ScheduleAsync(new ScheduleMessageRequest
+        {
+            To = "+15551234567",
+            Text = "hi",
+            ScheduledAt = "2030-01-01T10:00:00Z",
+            MessageType = "transactional",
+        });
+
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal("+15551234567", body.GetProperty("to").GetString());
+        Assert.Equal("hi", body.GetProperty("text").GetString());
+        Assert.Equal("2030-01-01T10:00:00Z", body.GetProperty("scheduledAt").GetString());
+        Assert.Equal("transactional", body.GetProperty("messageType").GetString());
+        Assert.False(body.TryGetProperty("from", out _));
+    }
+
+    [Fact]
+    public async Task ListScheduledAsync_ReadsTheItemsTheApiSends()
+    {
+        _mockHandler.QueueSuccessResponse(@"{
+            ""data"": [{
+                ""id"": ""schd_1"",
+                ""to"": ""+15551234567"",
+                ""text"": ""hi"",
+                ""scheduledAt"": ""2030-01-01T10:00:00.000Z"",
+                ""timezone"": ""America/New_York"",
+                ""status"": ""scheduled"",
+                ""creditsReserved"": 4,
+                ""segments"": 2,
+                ""senderType"": ""alphanumeric"",
+                ""createdAt"": ""2026-09-25T09:00:00.000Z"",
+                ""metadata"": { ""orderId"": ""o_1"" }
+            }],
+            ""count"": 1
+        }");
+
+        var list = await _client.Messages.ListScheduledAsync();
+
+        var item = Assert.Single(list);
+        Assert.Equal(4, item.CreditsReserved);
+        Assert.NotEqual(default, item.ScheduledAt);
+        Assert.NotEqual(default, item.CreatedAt);
+        Assert.Equal("America/New_York", item.Timezone);
+        Assert.Equal(2, item.Segments);
+        Assert.Equal("alphanumeric", item.SenderType);
+        Assert.NotNull(item.Metadata);
+        Assert.Equal("o_1", item.Metadata!["orderId"].ToString());
+    }
+
+    [Fact]
+    public async Task GetScheduledAsync_ReadsTheTimestampsTheApiSends()
+    {
+        _mockHandler.QueueSuccessResponse(@"{
+            ""id"": ""schd_1"",
+            ""to"": ""+15551234567"",
+            ""text"": ""hi"",
+            ""scheduledAt"": ""2030-01-01T10:00:00.000Z"",
+            ""timezone"": ""UTC"",
+            ""status"": ""cancelled"",
+            ""error"": null,
+            ""creditsReserved"": 2,
+            ""segments"": 1,
+            ""senderType"": ""number_pool"",
+            ""createdAt"": ""2026-09-25T09:00:00.000Z"",
+            ""cancelledAt"": ""2026-09-25T09:30:00.000Z"",
+            ""sentAt"": null
+        }");
+
+        var message = await _client.Messages.GetScheduledAsync("schd_1");
+
+        Assert.Equal(2, message.CreditsReserved);
+        Assert.NotEqual(default, message.ScheduledAt);
+        Assert.NotEqual(default, message.CreatedAt);
+        Assert.NotNull(message.CancelledAt);
+        Assert.Null(message.SentAt);
+    }
+
+    [Fact]
+    public async Task CancelScheduledAsync_ReadsTheCreditsRefundedTheApiSends()
+    {
+        _mockHandler.QueueSuccessResponse(@"{""id"":""sm_1"",""status"":""cancelled"",""creditsRefunded"":2}");
+
+        var response = await _client.Messages.CancelScheduledAsync("sm_1");
+
+        Assert.Equal("sm_1", response.Id);
+        Assert.Equal(2, response.CreditsRefunded);
+        Assert.Null(response.CancelledAt);
+    }
+
+    #endregion
+
     #region ScheduleAsync Tests
 
     [Fact]
@@ -47,10 +207,10 @@ public class MessagesScheduleTests : IDisposable
                 ""id"": ""sched_123"",
                 ""to"": ""+15551234567"",
                 ""text"": ""Scheduled message"",
-                ""scheduled_at"": ""2025-01-20T15:00:00Z"",
+                ""scheduledAt"": ""2025-01-20T15:00:00Z"",
                 ""status"": ""scheduled"",
-                ""credits_reserved"": 1,
-                ""created_at"": ""2024-01-20T10:00:00Z""
+                ""creditsReserved"": 1,
+                ""createdAt"": ""2024-01-20T10:00:00Z""
             }
         }";
         _mockHandler.QueueSuccessResponse(responseJson);
@@ -79,10 +239,10 @@ public class MessagesScheduleTests : IDisposable
                 ""id"": ""sched_456"",
                 ""to"": ""+15559876543"",
                 ""text"": ""Test scheduled"",
-                ""scheduled_at"": ""2025-02-01T10:00:00Z"",
+                ""scheduledAt"": ""2025-02-01T10:00:00Z"",
                 ""status"": ""scheduled"",
-                ""credits_reserved"": 1,
-                ""created_at"": ""2024-01-20T10:00:00Z""
+                ""creditsReserved"": 1,
+                ""createdAt"": ""2024-01-20T10:00:00Z""
             }
         }";
         _mockHandler.QueueSuccessResponse(responseJson);
@@ -194,10 +354,10 @@ public class MessagesScheduleTests : IDisposable
                 ""id"": ""sched_test"",
                 ""to"": ""+15551234567"",
                 ""text"": ""Test"",
-                ""scheduled_at"": ""{validDate}"",
+                ""scheduledAt"": ""{validDate}"",
                 ""status"": ""scheduled"",
-                ""credits_reserved"": 1,
-                ""created_at"": ""2024-01-20T10:00:00Z""
+                ""creditsReserved"": 1,
+                ""createdAt"": ""2024-01-20T10:00:00Z""
             }}
         }}";
         _mockHandler.QueueSuccessResponse(responseJson);
@@ -287,19 +447,19 @@ public class MessagesScheduleTests : IDisposable
                     ""id"": ""sched_1"",
                     ""to"": ""+15551234567"",
                     ""text"": ""Scheduled 1"",
-                    ""scheduled_at"": ""2025-01-20T10:00:00Z"",
+                    ""scheduledAt"": ""2025-01-20T10:00:00Z"",
                     ""status"": ""scheduled"",
-                    ""credits_reserved"": 1,
-                    ""created_at"": ""2024-01-20T09:00:00Z""
+                    ""creditsReserved"": 1,
+                    ""createdAt"": ""2024-01-20T09:00:00Z""
                 },
                 {
                     ""id"": ""sched_2"",
                     ""to"": ""+15559876543"",
                     ""text"": ""Scheduled 2"",
-                    ""scheduled_at"": ""2025-01-21T10:00:00Z"",
+                    ""scheduledAt"": ""2025-01-21T10:00:00Z"",
                     ""status"": ""scheduled"",
-                    ""credits_reserved"": 1,
-                    ""created_at"": ""2024-01-20T09:30:00Z""
+                    ""creditsReserved"": 1,
+                    ""createdAt"": ""2024-01-20T09:30:00Z""
                 }
             ],
             ""has_more"": false,
@@ -364,10 +524,10 @@ public class MessagesScheduleTests : IDisposable
                     ""id"": ""sched_page1"",
                     ""to"": ""+15551234567"",
                     ""text"": ""Page 1"",
-                    ""scheduled_at"": ""2025-01-20T10:00:00Z"",
+                    ""scheduledAt"": ""2025-01-20T10:00:00Z"",
                     ""status"": ""scheduled"",
-                    ""credits_reserved"": 1,
-                    ""created_at"": ""2024-01-20T09:00:00Z""
+                    ""creditsReserved"": 1,
+                    ""createdAt"": ""2024-01-20T09:00:00Z""
                 }
             ],
             ""has_more"": true,
@@ -397,10 +557,10 @@ public class MessagesScheduleTests : IDisposable
                 ""id"": ""sched_xyz"",
                 ""to"": ""+15551234567"",
                 ""text"": ""Retrieved scheduled message"",
-                ""scheduled_at"": ""2025-01-20T15:00:00Z"",
+                ""scheduledAt"": ""2025-01-20T15:00:00Z"",
                 ""status"": ""scheduled"",
-                ""credits_reserved"": 1,
-                ""created_at"": ""2024-01-20T10:00:00Z""
+                ""creditsReserved"": 1,
+                ""createdAt"": ""2024-01-20T10:00:00Z""
             }
         }";
         _mockHandler.QueueSuccessResponse(responseJson);
@@ -469,10 +629,10 @@ public class MessagesScheduleTests : IDisposable
                 ""id"": ""sched/special+id"",
                 ""to"": ""+15551234567"",
                 ""text"": ""Test"",
-                ""scheduled_at"": ""2025-01-20T15:00:00Z"",
+                ""scheduledAt"": ""2025-01-20T15:00:00Z"",
                 ""status"": ""scheduled"",
-                ""credits_reserved"": 1,
-                ""created_at"": ""2024-01-20T10:00:00Z""
+                ""creditsReserved"": 1,
+                ""createdAt"": ""2024-01-20T10:00:00Z""
             }
         }";
         _mockHandler.QueueSuccessResponse(responseJson);
@@ -497,8 +657,7 @@ public class MessagesScheduleTests : IDisposable
         var responseJson = @"{
             ""id"": ""sched_123"",
             ""status"": ""cancelled"",
-            ""credits_refunded"": 1,
-            ""cancelled_at"": ""2024-01-20T12:00:00Z""
+            ""creditsRefunded"": 1
         }";
         _mockHandler.QueueSuccessResponse(responseJson);
 
@@ -508,8 +667,8 @@ public class MessagesScheduleTests : IDisposable
         // Assert
         Assert.NotNull(response);
         Assert.Equal("sched_123", response.Id);
+        Assert.Equal("cancelled", response.Status);
         Assert.Equal(1, response.CreditsRefunded);
-        Assert.NotNull(response.CancelledAt);
     }
 
     [Fact]
@@ -599,8 +758,7 @@ public class MessagesScheduleTests : IDisposable
         var responseJson = @"{
             ""id"": ""sched/special+id"",
             ""status"": ""cancelled"",
-            ""credits_refunded"": 1,
-            ""cancelled_at"": ""2024-01-20T12:00:00Z""
+            ""creditsRefunded"": 1
         }";
         _mockHandler.QueueSuccessResponse(responseJson);
 

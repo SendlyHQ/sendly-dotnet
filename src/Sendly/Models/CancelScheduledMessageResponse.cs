@@ -23,13 +23,15 @@ public class CancelScheduledMessageResponse
     /// <summary>
     /// Credits refunded from cancellation.
     /// </summary>
-    [JsonPropertyName("credits_refunded")]
+    [JsonPropertyName("creditsRefunded")]
     public int CreditsRefunded { get; set; }
 
     /// <summary>
-    /// Cancellation timestamp.
+    /// Cancellation timestamp. The cancel response does not include it, so
+    /// this is null; <c>GetScheduledAsync</c> returns the message with its
+    /// <see cref="ScheduledMessage.CancelledAt"/>.
     /// </summary>
-    [JsonPropertyName("cancelled_at")]
+    [JsonPropertyName("cancelledAt")]
     public DateTime? CancelledAt { get; set; }
 
     /// <summary>

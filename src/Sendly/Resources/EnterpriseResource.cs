@@ -120,12 +120,29 @@ public class EnterpriseWorkspacesResource
         string sourceWorkspaceId,
         CancellationToken cancellationToken = default)
     {
+        return await InheritVerificationAsync(
+            workspaceId,
+            new InheritVerificationOptions { SourceWorkspaceId = sourceWorkspaceId },
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Give a workspace the verification of another workspace you own. Set
+    /// <see cref="InheritVerificationOptions.PurchaseNewNumber"/> to order the
+    /// workspace its own toll-free number instead of sharing the source's;
+    /// ordering is best effort, so check the response's
+    /// <see cref="InheritVerificationResponse.TollFreeNumber"/>.
+    /// </summary>
+    public async Task<InheritVerificationResponse> InheritVerificationAsync(
+        string workspaceId,
+        InheritVerificationOptions options,
+        CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrEmpty(workspaceId))
             throw new ValidationException("Workspace ID is required");
-        if (string.IsNullOrEmpty(sourceWorkspaceId))
+        if (string.IsNullOrEmpty(options?.SourceWorkspaceId))
             throw new ValidationException("Source workspace ID is required");
 
-        var options = new InheritVerificationOptions { SourceWorkspaceId = sourceWorkspaceId };
         using var response = await _client.PostAsync(
             $"/enterprise/workspaces/{Uri.EscapeDataString(workspaceId)}/verification/inherit",
             options, cancellationToken);
@@ -445,8 +462,8 @@ public class EnterpriseWorkspacesResource
     {
         if (workspaces == null || workspaces.Count == 0)
             throw new ValidationException("Workspaces list is required");
-        if (workspaces.Count > 50)
-            throw new ValidationException("Maximum 50 workspaces per bulk provision");
+        if (workspaces.Count > 100)
+            throw new ValidationException("Maximum 100 workspaces per bulk provision");
 
         var options = new BulkProvisionOptions { Workspaces = workspaces };
         using var response = await _client.PostAsync(
