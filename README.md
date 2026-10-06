@@ -2307,7 +2307,6 @@ await client.Enterprise.Workspaces.RevokeKeyAsync("ws_xxx", "key_abc");
 
 // Shared credit pool
 var pool = await client.Enterprise.Credits.GetAsync();
-await client.Enterprise.Credits.DepositAsync(10000, "Q1 top-up");
 ```
 
 ### Webhooks & Analytics
