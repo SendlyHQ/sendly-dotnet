@@ -1728,10 +1728,11 @@ await client.Messages.SendAsync(new SendMessageRequest("+12025550143", "Your rec
 
 The content type is inferred from the file extension when you pass a path, but
 the API accepts only JPEG, PNG and GIF images of up to 600 KB. Any other type,
-such as `.webp`, `.mp4`, `.mp3` or `.pdf`, and a larger file are refused with a
-`500`, which the client retries and then throws as a `SendlyException`; a file
-whose content is not really JPEG, PNG or GIF gets a `400`
-(`ValidationException`). Uploads need the `sms:send` scope, and answer `403`
+such as `.webp`, `.mp4`, `.mp3` or `.pdf`, is refused with a `415`
+(`ApiErrorCode` `unsupported_media_type`) and a larger file with a `413`
+(`file_too_large`); both throw a `SendlyException` straight away, without a
+retry. A file whose content is not really JPEG, PNG or GIF gets a `400`
+(`ValidationException`, `invalid_file`). Uploads need the `sms:send` scope, and answer `403`
 `feature_disabled` while MMS is not enabled for your account.
 
 ## Webhooks
