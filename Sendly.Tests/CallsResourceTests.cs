@@ -443,6 +443,20 @@ public class CallsResourceTests : IDisposable
         Assert.Equal(CallHangupClass.CallerHungUp, call.HangupClass);
     }
 
+    [Theory]
+    [InlineData("transferred", CallHangupClass.Transferred)]
+    [InlineData("voicemail", CallHangupClass.Voicemail)]
+    [InlineData("voicemail_unavailable", CallHangupClass.VoicemailUnavailable)]
+    public async Task GetAsync_ReadsTheAgentOutcomeHangupClasses(string wire, string expected)
+    {
+        _mockHandler.QueueSuccessResponse(
+            InboundDashboardCallJson.Replace("\"caller_hung_up\"", $"\"{wire}\""));
+
+        var call = await _client.Calls.GetAsync("0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d");
+
+        Assert.Equal(expected, call.HangupClass);
+    }
+
     [Fact]
     public async Task GetAsync_PercentEncodesTheId()
     {

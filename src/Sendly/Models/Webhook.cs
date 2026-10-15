@@ -74,6 +74,7 @@ public class Webhook
         public const string ShortCodeLive = "short_code.live";
         public const string ShortCodeSuspended = "short_code.suspended";
         public const string ShortCodeReactivated = "short_code.reactivated";
+        public const string ShortCodeCancelled = "short_code.cancelled";
         public const string ShortCodePaymentSucceeded = "short_code.payment_succeeded";
         public const string ShortCodePaymentFailed = "short_code.payment_failed";
     }

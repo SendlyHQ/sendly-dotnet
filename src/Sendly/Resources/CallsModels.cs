@@ -196,6 +196,15 @@ public static class CallHangupClass
     /// <summary>Cut short because the agent left.</summary>
     public const string AgentLeft = "agent_left";
 
+    /// <summary>The agent connected the caller to its transfer number.</summary>
+    public const string Transferred = "transferred";
+
+    /// <summary>An outbound agent call reached voicemail and the agent left a message.</summary>
+    public const string Voicemail = "voicemail";
+
+    /// <summary>An outbound agent call reached a mailbox that could not take a message.</summary>
+    public const string VoicemailUnavailable = "voicemail_unavailable";
+
     /// <summary>The call could not be set up.</summary>
     public const string SetupFailed = "setup_failed";
 
