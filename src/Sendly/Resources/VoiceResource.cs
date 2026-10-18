@@ -138,7 +138,7 @@ public class VoiceNumbersResource
     /// <returns>The number after the change</returns>
     /// <exception cref="ValidationException">When <paramref name="number"/> is empty or <paramref name="request"/> is null; 400 <c>invalid_request</c>, <c>invalid_voice_mode</c> or <c>agent_required</c> (agent mode with no agent)</exception>
     /// <exception cref="NotFoundException">404 <c>number_not_found</c> or <c>agent_not_found</c></exception>
-    /// <exception cref="SendlyException">403 <c>forbidden</c> / <c>live_key_required</c>, 409 <c>agent_disabled</c>, 502 <c>voice_attach_failed</c> (try again), 503 <c>voice_unavailable</c> (see <see cref="SendlyException.ApiErrorCode"/>). The 502 and 503 can follow a mode alone on a number whose voice is off.</exception>
+    /// <exception cref="SendlyException">403 <c>forbidden</c> / <c>live_key_required</c>, 409 <c>agent_disabled</c>, 503 <c>voice_attach_failed</c> (try again), 503 <c>voice_unavailable</c> (see <see cref="SendlyException.ApiErrorCode"/>). The 503 and 503 can follow a mode alone on a number whose voice is off.</exception>
     public async Task<VoiceNumber> UpdateAsync(
         string number,
         UpdateVoiceNumberRequest request,
@@ -171,7 +171,7 @@ public class VoiceNumbersResource
     /// <returns>The number with its <see cref="VoiceNumber.EmergencyAddress"/></returns>
     /// <exception cref="ValidationException">When <paramref name="number"/>, <c>Street</c>, <c>City</c>, <c>State</c> or <c>Zip</c> is empty; 400 <c>invalid_address</c> for a malformed field or <c>e911_not_applicable</c> for a number outside the US and Canada; 422 <c>invalid_address</c> when the address couldn't be validated, with a corrected address (or null) under <c>suggested</c> in <see cref="SendlyException.ResponseBody"/></exception>
     /// <exception cref="NotFoundException">404 <c>number_not_found</c> when the number isn't active in this workspace</exception>
-    /// <exception cref="SendlyException">403 <c>forbidden</c> / <c>live_key_required</c>; 502 <c>carrier_refused</c> when the registration was refused, thrown after the client has already retried the 5xx on its own. When the message says the number couldn't be found for emergency registration, retrying won't help: contact support. When it says the address couldn't be registered or emergency calling couldn't be switched on, try again later.</exception>
+    /// <exception cref="SendlyException">403 <c>forbidden</c> / <c>live_key_required</c>; 503 <c>carrier_refused</c> when the registration was refused, thrown after the client has already retried the 5xx on its own. When the message says the number couldn't be found for emergency registration, retrying won't help: contact support. When it says the address couldn't be registered or emergency calling couldn't be switched on, try again later.</exception>
     public async Task<VoiceNumber> RegisterEmergencyAddressAsync(
         string number,
         EmergencyAddress address,

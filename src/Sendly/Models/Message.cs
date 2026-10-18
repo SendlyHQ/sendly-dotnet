@@ -210,6 +210,22 @@ public class Message
     public AiMetadata? AiMetadata { get; set; }
 
     /// <summary>
+    /// On a WhatsApp message sent with
+    /// <see cref="SendWhatsAppMessageRequest.FallbackToSms"/>, what happened
+    /// to its SMS fallback. Returned by <c>GetAsync</c> and <c>ListAsync</c>;
+    /// null otherwise.
+    /// </summary>
+    [JsonPropertyName("fallback")]
+    public WhatsAppSmsFallback? Fallback { get; set; }
+
+    /// <summary>
+    /// On an SMS fallback, the id of the WhatsApp message it replaced.
+    /// Returned by <c>GetAsync</c> and <c>ListAsync</c>; null otherwise.
+    /// </summary>
+    [JsonPropertyName("fallbackOf")]
+    public string? FallbackOf { get; set; }
+
+    /// <summary>
     /// Whether the message was delivered.
     /// </summary>
     public bool IsDelivered => Status == Statuses.Delivered;

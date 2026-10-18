@@ -305,11 +305,11 @@ public static class CallErrorCode
     /// <summary>400: emergency addresses apply only to US and Canadian numbers.</summary>
     public const string E911NotApplicable = "e911_not_applicable";
 
-    /// <summary>502: voice couldn't be switched on for the number; try again.</summary>
+    /// <summary>503: voice couldn't be switched on for the number; try again.</summary>
     public const string VoiceAttachFailed = "voice_attach_failed";
 
     /// <summary>
-    /// 502: the emergency address registration was refused. Permanent when the
+    /// 503: the emergency address registration was refused. Permanent when the
     /// message says the number couldn't be found for emergency registration
     /// (contact support); otherwise try again later.
     /// </summary>

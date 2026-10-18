@@ -629,7 +629,7 @@ public class WhatsAppExtrasTests : IDisposable
     public async Task SignupCreateAsync_VerificationStartUnreachable_ThrowsWithoutStartingAnotherSession()
     {
         _mockHandler.QueueResponse(ErrorResponse(HttpStatusCode.BadGateway,
-            @"{""error"": ""whatsapp_verification_start_failed"", ""message"": ""WhatsApp couldn't start verifying this number. Any setup fee is refunded automatically. Please try again shortly.""}"));
+            @"{""error"": ""whatsapp_verification_start_failed"", ""message"": ""WhatsApp couldn't start verifying this number. Please try again shortly.""}"));
         _mockHandler.QueueResponse(ErrorResponse(HttpStatusCode.Created, VerifyingSignupJson));
 
         var ex = await Assert.ThrowsAsync<SendlyException>(
@@ -681,7 +681,7 @@ public class WhatsAppExtrasTests : IDisposable
     public async Task SignupCreateAsync_WithBusinessAccount_ServerErrorIsNotRetried()
     {
         _mockHandler.QueueResponse(ErrorResponse(HttpStatusCode.InternalServerError,
-            @"{""error"": ""internal_error"", ""message"": ""Something went wrong asking WhatsApp for the code. Any setup fee is refunded automatically. Please try again.""}"));
+            @"{""error"": ""internal_error"", ""message"": ""Something went wrong asking WhatsApp for the code. Please try again.""}"));
         _mockHandler.QueueResponse(ErrorResponse(HttpStatusCode.Created, VerifyingSignupJson));
 
         var ex = await Assert.ThrowsAsync<SendlyException>(

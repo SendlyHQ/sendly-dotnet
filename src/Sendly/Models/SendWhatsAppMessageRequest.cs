@@ -74,9 +74,24 @@ public class SendWhatsAppMessageRequest
     public Dictionary<string, object>? Metadata { get; set; }
 
     /// <summary>
+    /// Whether a message WhatsApp can't deliver goes as an SMS from the same
+    /// number, billed as an SMS: when the 24-hour window is closed, when
+    /// WhatsApp refuses it, or when WhatsApp reports it undeliverable later.
+    /// Defaults to false when omitted. The number must already be able to
+    /// send SMS to the recipient (US and Canada only), or the API responds
+    /// 403 <c>sms_fallback_unavailable</c>. Marketing and authentication
+    /// templates, and media without a caption, can't fall back (422
+    /// <c>sms_fallback_not_supported</c>). See
+    /// <see cref="WhatsAppMessage.Fallback"/>.
+    /// </summary>
+    [JsonPropertyName("fallbackToSms")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? FallbackToSms { get; set; }
+
+    /// <summary>
     /// Creates a new WhatsApp send request.
     /// </summary>
-    public SendWhatsAppMessageRequest(string to, string from, string? text = null, List<string>? mediaUrls = null, WhatsAppTemplateSendParams? template = null, Dictionary<string, object>? metadata = null)
+    public SendWhatsAppMessageRequest(string to, string from, string? text = null, List<string>? mediaUrls = null, WhatsAppTemplateSendParams? template = null, Dictionary<string, object>? metadata = null, bool? fallbackToSms = null)
     {
         To = to;
         From = from;
@@ -84,6 +99,7 @@ public class SendWhatsAppMessageRequest
         MediaUrls = mediaUrls;
         Template = template;
         Metadata = metadata;
+        FallbackToSms = fallbackToSms;
     }
 }
 

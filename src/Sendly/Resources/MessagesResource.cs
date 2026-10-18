@@ -92,15 +92,25 @@ public partial class MessagesResource
     /// <c>whatsapp_not_enabled</c>. Free-form text and media only deliver
     /// inside an open 24-hour customer-service window — outside it, send an
     /// approved <see cref="SendWhatsAppMessageRequest.Template"/> instead
-    /// (check with <c>client.WhatsApp.WindowAsync</c>).
+    /// (check with <c>client.WhatsApp.WindowAsync</c>), or set
+    /// <see cref="SendWhatsAppMessageRequest.FallbackToSms"/> so a message
+    /// WhatsApp can't deliver goes as an SMS instead (see
+    /// <see cref="WhatsAppMessage.Fallback"/>).
     /// </summary>
     /// <exception cref="ValidationException">
     /// <c>whatsapp_send_failed</c> (422) when WhatsApp refused the message.
     /// It is final and not retried, and the message wasn't charged. The API
     /// caches it under the idempotency key and replays it for 24 hours.
+    /// <c>sms_fallback_not_supported</c> (422) when
+    /// <see cref="SendWhatsAppMessageRequest.FallbackToSms"/> is set on a
+    /// marketing or authentication template, or on media without a caption.
+    /// With <see cref="SendWhatsAppMessageRequest.FallbackToSms"/>, a 422
+    /// <c>whatsapp_window_closed</c> or <c>whatsapp_send_failed</c> means the
+    /// SMS couldn't go either: <see cref="SendlyException.ResponseBody"/>
+    /// carries a <c>fallback</c> object whose <c>error</c> says why.
     /// </exception>
     /// <exception cref="SendlyException">
-    /// <c>whatsapp_send_failed</c> (502) when the message provably never
+    /// <c>whatsapp_send_failed</c> (503) when the message provably never
     /// reached the carrier, so it was not sent and is safe to send again. It
     /// is never cached, so the client retries it like any 5xx under the same
     /// idempotency key; the message wasn't charged.
@@ -109,6 +119,9 @@ public partial class MessagesResource
     /// check before sending it again (it could arrive twice). It is not
     /// retried automatically, and the API caches it under the idempotency
     /// key. No send returns 503 <c>whatsapp_unavailable</c>.
+    /// <c>sms_fallback_unavailable</c> (403) when
+    /// <see cref="SendWhatsAppMessageRequest.FallbackToSms"/> is set and the
+    /// number can't send SMS to the recipient; nothing is sent or charged.
     /// </exception>
     /// <param name="request">WhatsApp message details (text, media with caption, or template)</param>
     /// <param name="cancellationToken">Cancellation token</param>
