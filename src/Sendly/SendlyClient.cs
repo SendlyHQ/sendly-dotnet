@@ -18,7 +18,7 @@ public class SendlyClient : IDisposable
     /// <summary>
     /// SDK version.
     /// </summary>
-    public const string Version = "4.4.0";
+    public const string Version = "4.5.0";
 
     /// <summary>
     /// Default API base URL.
