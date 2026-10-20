@@ -25,7 +25,7 @@ dotnet add package Sendly
 Install-Package Sendly
 
 # PackageReference (add to .csproj)
-<PackageReference Include="Sendly" Version="4.5.0" />
+<PackageReference Include="Sendly" Version="4.5.1" />
 ```
 
 ## Namespaces
