@@ -13,7 +13,10 @@ namespace Sendly.Resources;
 /// Meta-reviewed message templates, and send with
 /// <c>client.Messages.SendAsync(new SendWhatsAppMessageRequest(...))</c>.
 ///
-/// Connecting a number is free (no setup or monthly fee). The first
+/// Connecting a number is a one-time $9.99 connection fee per number (no
+/// monthly fee), charged to your card when you start connecting it,
+/// refunded automatically if the connection fails and not refundable once
+/// the number is connected. The first
 /// number ends with a human step:
 /// <see cref="WhatsAppSignupResource.CreateAsync(string, CancellationToken)"/>
 /// returns a <c>ConnectUrl</c> that a person must open in a browser and log in
@@ -62,7 +65,7 @@ namespace Sendly.Resources;
 /// </summary>
 /// <example>
 /// <code>
-/// // 1. Connect a number (free, no monthly fee). The connect URL
+/// // 1. Connect a number ($9.99 one-time, no monthly fee). The connect URL
 /// //    must be opened by a human — they log in with Facebook in a browser
 /// //    to link their WhatsApp Business Account.
 /// var signup = await sendly.WhatsApp.Signup.CreateAsync("+15559876543");
@@ -182,21 +185,24 @@ public class WhatsAppSignupResource
     /// <summary>
     /// Start connecting a number to WhatsApp.
     ///
-    /// Connecting a number is free (no setup or monthly fee). Returns a
-    /// <c>ConnectUrl</c>. Completing the connection requires a human: hand the
+    /// Charges a one-time $9.99 connection fee per number (no monthly fee) to
+    /// your card and returns a <c>ConnectUrl</c>. Completing the connection requires a human: hand the
     /// URL to your user — they open it in a browser and log in with Facebook
     /// to link their WhatsApp Business Account. Then poll
     /// <see cref="GetAsync"/> until the status is <c>active</c>.
     ///
     /// Calling again for a number with an in-flight signup returns the
-    /// existing signup (same <c>ConnectUrl</c>).
+    /// existing signup (same <c>ConnectUrl</c>) without charging again.
     /// Requires a live API key with the <c>whatsapp:write</c> scope (a test key
     /// gets 403 <c>whatsapp_requires_live_key</c>) and, in a team workspace, an
     /// owner or admin (<c>settings:write</c>). After the Facebook step the
     /// signup stays <c>registering</c> while WhatsApp activates the number.
     /// Activation usually takes a few minutes but can take hours. If it hasn't
     /// finished about 6 hours after the session began, the session fails with
-    /// <c>registration_timeout</c>.
+    /// <c>registration_timeout</c> and the fee is refunded. If the connection
+    /// fails, the $9.99 fee is refunded automatically; once the number is
+    /// connected it is not refundable, and a later disconnect gets nothing
+    /// back.
     /// To add a number to a WhatsApp Business account already connected,
     /// without the Facebook step, use
     /// <see cref="CreateAsync(StartWhatsAppSignupRequest, CancellationToken)"/>.
@@ -206,13 +212,14 @@ public class WhatsAppSignupResource
     /// being added to a connected account by code; finish that with
     /// <see cref="VerifyAsync"/>, or wait for it to expire. The body's
     /// <c>id</c> is that signup. <c>whatsapp_unavailable</c> (503) while
-    /// WhatsApp connections are unavailable. Only signup
+    /// WhatsApp connections are unavailable; nothing is charged. Only signup
     /// returns it, with <c>retryAfter</c> 3600 in the body and a
     /// <c>Retry-After: 3600</c> header. The client retries it like any 5xx before throwing.
     /// </exception>
     /// <exception cref="RateLimitException">
-    /// <c>whatsapp_signup_limit_reached</c> (429) after 5 failed signups (or
-    /// 20 cancelled) in 24 hours. Not retried; try again the next day.
+    /// <c>whatsapp_signup_limit_reached</c> (429) after 5 failed, charged
+    /// signups (or 20 cancelled) in 24 hours. Not retried; try again the next
+    /// day.
     /// </exception>
     /// <param name="phoneNumber">The number to connect, in E.164 format. Must be an
     /// active number in your workspace (provisioned, purchased, or fully ported into Sendly).</param>
@@ -248,9 +255,11 @@ public class WhatsAppSignupResource
     /// arrived on the number. The account must be connected in this
     /// workspace with at least one active number, otherwise the API answers
     /// 404 <c>whatsapp_business_account_not_found</c>. The number must meet
-    /// the same rules as a Facebook connection, and adding it is free too.
-    /// Calling again for a number that is already verifying returns that
-    /// session without sending another code. Requires a live API key with the
+    /// the same rules as a Facebook connection, and the same one-time $9.99 fee
+    /// applies, charged before the code is requested and refunded
+    /// automatically if the connection fails. Calling again for a number
+    /// that is already verifying returns that session without charging again
+    /// or sending another code. Requires a live API key with the
     /// <c>whatsapp:write</c> scope and, in a team workspace, an owner or
     /// admin (<c>settings:write</c>).
     /// </summary>
@@ -259,7 +268,8 @@ public class WhatsAppSignupResource
     /// account has none to reuse. 400 <c>invalid_request</c> when
     /// <c>VerificationMethod</c> isn't <c>sms</c> or <c>voice</c>, or
     /// <c>DisplayName</c> is longer than 512 characters. 422 <c>whatsapp_verification_start_failed</c>
-    /// when WhatsApp refused to verify the number; the session failed.
+    /// when WhatsApp refused to verify the number; the session failed and
+    /// the fee is refunded.
     /// </exception>
     /// <exception cref="NotFoundException">
     /// 404 <c>whatsapp_business_account_not_found</c>.
@@ -270,22 +280,23 @@ public class WhatsAppSignupResource
     /// <c>whatsapp_verification_in_progress</c> (an expired attempt for the
     /// number is still being cleared; try again in a moment), or 503
     /// <c>whatsapp_verification_start_failed</c> when WhatsApp couldn't be
-    /// reached; that session failed, so start again.
+    /// reached; that session failed and its fee is refunded, so start again.
     /// With <c>BusinessAccountId</c> set, a 5xx, a 408, a timeout or a
     /// network failure (a <see cref="NetworkException"/>) is thrown on the
     /// first attempt and never retried automatically, because a retry could
-    /// start a new session and ask WhatsApp for another code. Only a 429 the
-    /// client waits out is retried. Without
+    /// start a new session that is charged and, when it fails, refunded. Only
+    /// a 429 the client waits out is retried. Without
     /// <c>BusinessAccountId</c>, the errors and retries of
     /// <see cref="CreateAsync(string, CancellationToken)"/> apply.
     /// </exception>
     /// <exception cref="InsufficientCreditsException">
-    /// 402 <c>payment_method_required</c> or <c>payment_failed</c>; not
-    /// returned while connecting a number is free.
+    /// 402 <c>payment_method_required</c> or <c>payment_failed</c> when the
+    /// $9.99 fee couldn't be charged.
     /// </exception>
     /// <exception cref="RateLimitException">
-    /// <c>whatsapp_signup_limit_reached</c> (429) after 5 failed signups (or
-    /// 20 cancelled) in 24 hours. Not retried; try again the next day.
+    /// <c>whatsapp_signup_limit_reached</c> (429) after 5 failed, charged
+    /// signups (or 20 cancelled) in 24 hours. Not retried; try again the next
+    /// day.
     /// </exception>
     /// <param name="request">The number, and for adding it by code the business account, delivery method and display name</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -324,7 +335,7 @@ public class WhatsAppSignupResource
     /// <exception cref="NotFoundException">404 <c>signup_not_found</c>.</exception>
     /// <exception cref="SendlyException">
     /// 409 <c>whatsapp_verification_failed</c> after 5 wrong codes (the
-    /// session failed), 409
+    /// session failed and the fee is refunded), 409
     /// <c>whatsapp_verification_busy</c> while another code for the number is
     /// being checked (try again), 409 <c>signup_not_active</c> when the signup
     /// isn't waiting for a code or is more than 3 hours old, 503
@@ -977,7 +988,7 @@ public class WhatsAppSignup
     /// complete the connect URL), <c>registering</c> (WhatsApp is activating
     /// the number; activation usually takes a few minutes but can take hours,
     /// and a session that hasn't finished about 6 hours after it began fails
-    /// with <c>registration_timeout</c>),
+    /// with <c>registration_timeout</c> and the fee is refunded),
     /// <c>verifying</c> (a number added by code, waiting for its code),
     /// <c>active</c>, or <c>failed</c> (see <see cref="FailureReasons"/>).
     /// The API does not send <c>expired</c>.
@@ -1000,7 +1011,7 @@ public class WhatsAppSignup
     /// <summary>
     /// Why the signup failed, when <see cref="Status"/> is <c>failed</c>; null
     /// otherwise. Holds one code: <c>setup_fee_payment_failed</c> (the
-    /// connection couldn't be started),
+    /// $9.99 connection fee couldn't be charged),
     /// <c>signup_abandoned</c>, <c>meta_exchange_failed</c>,
     /// <c>registration_failed</c>, <c>waba_already_connected</c>,
     /// <c>waba_mismatch</c> (the WhatsApp Business Account chosen in the
@@ -1011,7 +1022,8 @@ public class WhatsAppSignup
     /// couldn't start verifying the number), <c>verification_failed</c> (too
     /// many wrong codes) or <c>verification_expired</c> (the signup was
     /// left untouched for an hour, or was more than 3 hours old when the
-    /// number was added again).
+    /// number was added again). If
+    /// the connection fails, the $9.99 fee is refunded automatically.
     /// </summary>
     [JsonPropertyName("failureReasons")]
     public List<string>? FailureReasons { get; set; }

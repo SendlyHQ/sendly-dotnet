@@ -719,7 +719,8 @@ accepts bytes, a stream or a path via `EinDocumentInput`.
 
 ## WhatsApp
 
-Connect a number you own to WhatsApp (free to connect, no monthly fee),
+Connect a number you own to WhatsApp ($9.99 one-time connection fee per
+number, no monthly fee),
 create Meta-reviewed message templates, and send with
 `client.Messages.SendAsync(new SendWhatsAppMessageRequest(...))`. Free-form
 text and media only deliver inside an open 24-hour customer-service window
@@ -753,7 +754,9 @@ Console.WriteLine($"Have your user open: {signup.ConnectUrl}");
 //    "registering" while WhatsApp activates the number. Activation usually
 //    takes a few minutes but can take hours. If it hasn't finished about 6
 //    hours after the session began, the session fails with
-//    registration_timeout. "failed" carries a reason in FailureReasons.
+//    registration_timeout and the fee is refunded. "failed" carries a reason
+//    in FailureReasons; if the connection fails, the $9.99 fee is refunded
+//    automatically.
 var status = await client.WhatsApp.Signup.GetAsync(signup.Id);
 Console.WriteLine(status.Status); // "initiated" -> "registering" -> "active"
 
@@ -841,10 +844,10 @@ await client.WhatsApp.Senders.UpdateProfileAsync("+12025550181",
 
 Once one number has connected through Facebook, more numbers can join the
 same WhatsApp Business account from code. Meta sends the new number a 6-digit
-code by text (`sms`, the default) or voice call (`voice`). Adding a number is
-free, like a Facebook connection. A null
-`BusinessAccountId` starts a Facebook connection instead
-(a blank one throws a `ValidationException`), so take it from an active sender (the list is newest first, and
+code by text (`sms`, the default) or voice call (`voice`); the same $9.99
+one-time fee applies, refunded automatically if the connection fails. A null
+`BusinessAccountId` starts a Facebook connection instead, with its own $9.99
+fee (a blank one throws a `ValidationException`), so take it from an active sender (the list is newest first, and
 a pending sender has none).
 
 ```csharp
@@ -882,12 +885,13 @@ safe.
 
 A wrong code is a `422` `whatsapp_verification_code_invalid`
 (`ValidationException`) whose body has `attemptsRemaining`; after 5 wrong codes
-the signup fails with `409` `whatsapp_verification_failed`. Other refusals: `404` `whatsapp_business_account_not_found` (no
+the signup fails with `409` `whatsapp_verification_failed` and the fee is
+refunded. Other refusals: `404` `whatsapp_business_account_not_found` (no
 connected account with that id in the workspace), `400`
 `display_name_required`, `422` `whatsapp_verification_start_failed` (WhatsApp
-refused to verify the number), `503`
-`whatsapp_verification_start_failed` (WhatsApp couldn't be reached, so start
-again), `409` `whatsapp_verification_busy` (another code
+refused to verify the number; the fee is refunded), `503`
+`whatsapp_verification_start_failed` (WhatsApp couldn't be reached; the fee is
+refunded, so start again), `409` `whatsapp_verification_busy` (another code
 is being checked; try again), `503` `whatsapp_verification_unavailable` (the
 attempt isn't counted; try again), `503` `whatsapp_activation_pending` (the
 code was accepted but connecting didn't finish; check back), `409`
@@ -895,8 +899,8 @@ code was accepted but connecting didn't finish; check back), `409`
 at once with `RetryAfter`. `CreateAsync` with a `BusinessAccountId` and
 `VerifyAsync` throw a `5xx`, a `408`, a timeout or a network failure
 (`NetworkException`) on the first attempt and never retry it, because the
-outcome is unknown: a retried start could begin a new session, and every code
-submission uses up one of the 5
+outcome is unknown: a retried start could begin a new session that is charged
+and, when it fails, refunded, and every code submission uses up one of the 5
 attempts (after `whatsapp_activation_pending` WhatsApp has already accepted the
 code, so check `GetAsync` before submitting again). Only a `429` the client
 waits out is retried. `ResendAsync` retries like any other call.
@@ -990,8 +994,9 @@ automatically. Only connecting can fail with `503` `whatsapp_unavailable`; no se
 returns it (nothing is charged; the client retries it, and the body's
 `retryAfter: 3600` and the `Retry-After: 3600` header say how long to wait),
 or `429`
-`whatsapp_signup_limit_reached` after 5 failed signups in 24 hours,
-which is thrown at once; try again the next day.
+`whatsapp_signup_limit_reached` after 5 failed, charged signups in 24 hours,
+which is thrown at once; try again the next day. Once a number is connected
+the $9.99 fee is not refundable, and a later disconnect gets nothing back.
 
 ### SMS fallback
 
