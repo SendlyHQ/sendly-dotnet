@@ -78,6 +78,36 @@ public class WhatsAppResourceTests : IDisposable
         Assert.Contains("\"phoneNumber\":\"\\u002B15559876543\"", body);
     }
 
+    [Fact]
+    public async Task SignupCreateAsync_WithIdempotencyKey_SendsTheKey()
+    {
+        _mockHandler.QueueSuccessResponse(@"{""id"": ""was_123"", ""connectUrl"": ""https://x"", ""status"": ""initiated""}");
+
+        await _client.WhatsApp.Signup.CreateAsync(
+            new StartWhatsAppSignupRequest { PhoneNumber = "+15559876543" },
+            new Sendly.Models.IdempotentRequestOptions { IdempotencyKey = "wa-signup-1" });
+
+        var request = _mockHandler.LastRequest!;
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.EndsWith("whatsapp/signup", request.RequestUri!.AbsolutePath);
+        Assert.Equal("wa-signup-1", request.Headers.GetValues("Idempotency-Key").Single());
+    }
+
+    [Fact]
+    public async Task SignupCreateAsync_AddingByCodeWithIdempotencyKey_SendsTheKeyAndDoesNotRetryA5xx()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.ServiceUnavailable, @"{""error"": ""whatsapp_verification_start_failed"", ""message"": ""down""}");
+
+        await Assert.ThrowsAnyAsync<SendlyException>(() => _client.WhatsApp.Signup.CreateAsync(
+            new StartWhatsAppSignupRequest { PhoneNumber = "+15559876543", BusinessAccountId = "1234567890" },
+            new Sendly.Models.IdempotentRequestOptions { IdempotencyKey = "wa-add-1" }));
+
+        var request = Assert.Single(_mockHandler.Requests);
+        Assert.Equal("wa-add-1", request.Headers.GetValues("Idempotency-Key").Single());
+        var body = await request.Content!.ReadAsStringAsync();
+        Assert.Contains("\"businessAccountId\":\"1234567890\"", body);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("15559876543")]
@@ -570,6 +600,29 @@ public class WhatsAppResourceTests : IDisposable
     }
 
     [Fact]
+    public async Task TemplatesCreateAsync_WithIdempotencyKey_SendsTheKey()
+    {
+        _mockHandler.QueueSuccessResponse(@"{""id"": ""wat_123"", ""status"": ""PENDING""}");
+
+        var template = await _client.WhatsApp.Templates.CreateAsync(
+            new CreateWhatsAppTemplateRequest
+            {
+                Sender = "+15559876543",
+                Name = "order_shipped",
+                Language = "en_US",
+                Category = "UTILITY",
+                Body = "Your order has shipped!"
+            },
+            new Sendly.Models.IdempotentRequestOptions { IdempotencyKey = "wa-template-1" });
+
+        var request = _mockHandler.LastRequest!;
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.EndsWith("whatsapp/templates", request.RequestUri!.AbsolutePath);
+        Assert.Equal("wa-template-1", request.Headers.GetValues("Idempotency-Key").Single());
+        Assert.Equal("wat_123", template.Id);
+    }
+
+    [Fact]
     public async Task TemplatesCreateAsync_WithButtons_SendsButtons()
     {
         // Arrange
@@ -665,6 +718,25 @@ public class WhatsAppResourceTests : IDisposable
         Assert.DoesNotContain("header", body);
         Assert.DoesNotContain("buttons", body);
         Assert.DoesNotContain("examples", body);
+    }
+
+    [Fact]
+    public async Task TemplatesUpdateAsync_WithEmptyFooterHeaderAndButtons_SendsThemToClear()
+    {
+        _mockHandler.QueueSuccessResponse(@"{""id"": ""wat_123"", ""status"": ""PENDING""}");
+
+        await _client.WhatsApp.Templates.UpdateAsync("wat_123", new UpdateWhatsAppTemplateRequest
+        {
+            Footer = "",
+            Header = "",
+            Buttons = new()
+        });
+
+        var request = _mockHandler.LastRequest!;
+        Assert.Equal(HttpMethod.Patch, request.Method);
+        Assert.Equal(
+            "{\"footer\":\"\",\"header\":\"\",\"buttons\":[]}",
+            await request.Content!.ReadAsStringAsync());
     }
 
     [Fact]

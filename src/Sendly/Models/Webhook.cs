@@ -118,6 +118,20 @@ public class Webhook
     public List<string> Events { get; set; } = new();
 
     /// <summary>
+    /// The webhook's description, or null when it has none.
+    /// </summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Your own JSON object stored with the webhook: empty when none was set,
+    /// and null when the stored value is not a JSON object.
+    /// </summary>
+    [JsonPropertyName("metadata")]
+    [JsonConverter(typeof(JsonObjectOrNullConverter))]
+    public Dictionary<string, object>? Metadata { get; set; }
+
+    /// <summary>
     /// Event mode filter (all, test, live).
     /// </summary>
     [JsonPropertyName("mode")]
@@ -263,10 +277,22 @@ public class CreateWebhookOptions
     public List<string> Events { get; set; } = new();
 
     /// <summary>
+    /// A description for the webhook. Omitted when null.
+    /// </summary>
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    /// <summary>
     /// Event mode filter (all, test, live). Live requires verification.
     /// </summary>
     [JsonPropertyName("mode")]
     public string? Mode { get; set; }
+
+    /// <summary>
+    /// Your own JSON object, stored with the webhook. Omitted when null.
+    /// </summary>
+    [JsonPropertyName("metadata")]
+    public Dictionary<string, object>? Metadata { get; set; }
 
     /// <summary>
     /// API version for webhook payloads.
@@ -276,10 +302,18 @@ public class CreateWebhookOptions
 }
 
 /// <summary>
-/// Options for updating a webhook.
+/// Options for updating a webhook. Only the properties you set are sent, and
+/// the API leaves the others as they are. Setting <see cref="Description"/> or
+/// <see cref="Metadata"/> to null clears it; a null <see cref="Url"/>,
+/// <see cref="Events"/>, <see cref="IsActive"/> or <see cref="Mode"/> is not
+/// sent.
 /// </summary>
-public class UpdateWebhookOptions
+public class UpdateWebhookOptions : IAssignedProperties
 {
+    private readonly HashSet<string> _assigned = new();
+    private string? _description;
+    private Dictionary<string, object>? _metadata;
+
     /// <summary>
     /// New URL to receive webhook events.
     /// </summary>
@@ -303,6 +337,28 @@ public class UpdateWebhookOptions
     /// </summary>
     [JsonPropertyName("mode")]
     public string? Mode { get; set; }
+
+    /// <summary>
+    /// A new description. Set it to null to clear the description.
+    /// </summary>
+    [JsonPropertyName("description")]
+    public string? Description
+    {
+        get => _description;
+        set { _description = value; _assigned.Add(nameof(Description)); }
+    }
+
+    /// <summary>
+    /// A new metadata object, replacing the stored one. Set it to null to clear it.
+    /// </summary>
+    [JsonPropertyName("metadata")]
+    public Dictionary<string, object>? Metadata
+    {
+        get => _metadata;
+        set { _metadata = value; _assigned.Add(nameof(Metadata)); }
+    }
+
+    bool IAssignedProperties.IsAssigned(string propertyName) => _assigned.Contains(propertyName);
 }
 
 /// <summary>
@@ -363,4 +419,24 @@ public class WebhookList : IEnumerable<Webhook>
 
     public IEnumerator<Webhook> GetEnumerator() => Data.GetEnumerator();
     System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+internal sealed class JsonObjectOrNullConverter : JsonConverter<Dictionary<string, object>?>
+{
+    public override Dictionary<string, object>? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.StartObject)
+            return JsonSerializer.Deserialize<Dictionary<string, object>>(ref reader, options);
+
+        reader.Skip();
+        return null;
+    }
+
+    public override void Write(Utf8JsonWriter writer, Dictionary<string, object>? value, JsonSerializerOptions options)
+    {
+        if (value is null)
+            writer.WriteNullValue();
+        else
+            JsonSerializer.Serialize(writer, value, options);
+    }
 }

@@ -2,6 +2,7 @@ using System.Net;
 using System.Reflection;
 using Sendly.Exceptions;
 using Sendly.Models;
+using Sendly.Resources;
 using Sendly.Tests.Fixtures;
 using Xunit;
 
@@ -70,6 +71,22 @@ public class WebhooksResourceTests : IDisposable
     }
 
     [Fact]
+    public async Task ListAsync_ReadsMetadataThatIsNotAnObjectAsNull()
+    {
+        _mockHandler.QueueSuccessResponse(
+            @"[{ ""id"": ""whk_1"", ""url"": ""https://example.com/a"", ""events"": [], ""metadata"": [""a"", 1] },
+               { ""id"": ""whk_2"", ""url"": ""https://example.com/b"", ""events"": [], ""metadata"": ""note"" },
+               { ""id"": ""whk_3"", ""url"": ""https://example.com/c"", ""events"": [], ""metadata"": { ""team"": ""ops"" } }]");
+
+        var webhooks = await _client.Webhooks.ListAsync();
+
+        Assert.Equal(3, webhooks.Data.Count);
+        Assert.Null(webhooks.Data[0].Metadata);
+        Assert.Null(webhooks.Data[1].Metadata);
+        Assert.Equal("ops", webhooks.Data[2].Metadata!["team"].ToString());
+    }
+
+    [Fact]
     public async Task ListAsync_WithNoWebhooks_ReturnsAnEmptyList()
     {
         _mockHandler.QueueSuccessResponse("[]");
@@ -89,6 +106,78 @@ public class WebhooksResourceTests : IDisposable
 
         Assert.Equal("{\"is_active\":false}", await _mockHandler.LastRequest!.Content!.ReadAsStringAsync());
         Assert.False(webhook.IsActive);
+    }
+
+    [Fact]
+    public async Task CreateAsync_SendsDescriptionModeAndMetadata()
+    {
+        _mockHandler.QueueSuccessResponse(@"{
+            ""id"": ""whk_1"",
+            ""url"": ""https://example.com/a"",
+            ""events"": [""message.delivered""],
+            ""description"": ""Order updates"",
+            ""mode"": ""live"",
+            ""is_active"": true,
+            ""metadata"": { ""team"": ""ops"" },
+            ""secret"": ""whsec_abc""
+        }");
+
+        var created = await _client.Webhooks.CreateAsync(new CreateWebhookOptions
+        {
+            Url = "https://example.com/a",
+            Events = new List<string> { "message.delivered" },
+            Description = "Order updates",
+            Mode = Webhook.Modes.Live,
+            Metadata = new Dictionary<string, object> { ["team"] = "ops" },
+        });
+
+        using var body = System.Text.Json.JsonDocument.Parse(await _mockHandler.LastRequest!.Content!.ReadAsStringAsync());
+        Assert.Equal("Order updates", body.RootElement.GetProperty("description").GetString());
+        Assert.Equal("live", body.RootElement.GetProperty("mode").GetString());
+        Assert.Equal("ops", body.RootElement.GetProperty("metadata").GetProperty("team").GetString());
+        Assert.Equal("Order updates", created.Webhook.Description);
+        Assert.Equal("ops", created.Webhook.Metadata!["team"].ToString());
+        Assert.Equal("whsec_abc", created.Secret);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithoutDescriptionOrMetadata_LeavesThemOut()
+    {
+        _mockHandler.QueueSuccessResponse(WebhookJson("whk_1", "https://example.com/a"));
+
+        await _client.Webhooks.CreateAsync("https://example.com/a", new List<string> { "message.delivered" });
+
+        using var body = System.Text.Json.JsonDocument.Parse(await _mockHandler.LastRequest!.Content!.ReadAsStringAsync());
+        Assert.False(body.RootElement.TryGetProperty("description", out _));
+        Assert.False(body.RootElement.TryGetProperty("metadata", out _));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SendsDescriptionAndMetadata()
+    {
+        _mockHandler.QueueSuccessResponse(WebhookJson("whk_1", "https://example.com/a"));
+
+        await _client.Webhooks.UpdateAsync("whk_1", new UpdateWebhookOptions
+        {
+            Description = "Billing",
+            Metadata = new Dictionary<string, object> { ["team"] = "billing" },
+        });
+
+        Assert.Equal(
+            "{\"description\":\"Billing\",\"metadata\":{\"team\":\"billing\"}}",
+            await _mockHandler.LastRequest!.Content!.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithNullDescriptionAndMetadata_SendsNullsToClearThem()
+    {
+        _mockHandler.QueueSuccessResponse(WebhookJson("whk_1", "https://example.com/a"));
+
+        await _client.Webhooks.UpdateAsync("whk_1", new UpdateWebhookOptions { Description = null, Metadata = null });
+
+        Assert.Equal(
+            "{\"description\":null,\"metadata\":null}",
+            await _mockHandler.LastRequest!.Content!.ReadAsStringAsync());
     }
 
     [Fact]
@@ -181,5 +270,71 @@ public class WebhooksResourceTests : IDisposable
 
         Assert.Equal("Test webhook failed: connect ECONNREFUSED", exception.Message);
         Assert.Single(_mockHandler.Requests);
+    }
+
+    private const string RecoveryPreviewJson = @"{
+        ""circuitState"": ""open"",
+        ""circuitOpenedAt"": ""2026-09-25T08:00:00.000Z"",
+        ""failureCount"": 12,
+        ""auditFailures"": {
+            ""total"": 3,
+            ""byStatus"": { ""failed"": 2, ""cancelled"": 1 },
+            ""byEventType"": { ""message.delivered"": 2, ""message.opt_out"": 1 }
+        },
+        ""missingFromMessages"": { ""total"": 4, ""byEventType"": { ""message.sent"": 4 } },
+        ""histogram"": [{ ""bucket"": ""2026-09-25T08:00:00.000Z"", ""missing"": 4, ""failed"": 3 }],
+        ""samples"": [{ ""id"": ""msg_1"", ""toMasked"": ""+1555***4567"", ""eventType"": ""message.delivered"", ""occurredAt"": ""2026-09-25T08:30:00.000Z"" }],
+        ""windowSuggestion"": { ""since"": ""2026-09-25T08:00:00.000Z"", ""until"": ""2026-09-25T10:00:00.000Z"" },
+        ""since"": ""2026-09-24T10:00:00.000Z"",
+        ""until"": ""2026-09-25T10:00:00.000Z""
+    }";
+
+    [Fact]
+    public async Task RecoveryPreviewAsync_SendsTheWindowAndReadsTheCamelCasePreview()
+    {
+        _mockHandler.QueueSuccessResponse(RecoveryPreviewJson);
+
+        var preview = await _client.Webhooks.RecoveryPreviewAsync("whk_1", new RecoveryPreviewOptions
+        {
+            Since = "2026-09-24T10:00:00.000Z",
+            Until = "2026-09-25T10:00:00.000Z",
+            EventTypes = new List<string> { "message.delivered", "message.failed" }
+        });
+
+        var request = _mockHandler.LastRequest!;
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.Equal("/webhooks/whk_1/recovery-preview", request.RequestUri!.AbsolutePath);
+        var query = System.Web.HttpUtility.ParseQueryString(request.RequestUri.Query);
+        Assert.Equal("2026-09-24T10:00:00.000Z", query["since"]);
+        Assert.Equal("2026-09-25T10:00:00.000Z", query["until"]);
+        Assert.Equal("message.delivered,message.failed", query["event_types"]);
+
+        Assert.Equal("open", preview.CircuitState);
+        Assert.True(preview.IsCircuitOpen);
+        Assert.Equal("2026-09-25T08:00:00.000Z", preview.CircuitOpenedAt);
+        Assert.Equal(12, preview.FailureCount);
+        Assert.Equal(3, preview.AuditFailures.Total);
+        Assert.Equal(1, preview.AuditFailures.ByStatus["cancelled"]);
+        Assert.Equal(1, preview.AuditFailures.ByEventType["message.opt_out"]);
+        Assert.Equal(4, preview.MissingFromMessages.ByEventType["message.sent"]);
+        Assert.Equal(3, preview.Histogram[0].Failed);
+        Assert.Equal("+1555***4567", preview.Samples[0].ToMasked);
+        Assert.Equal("2026-09-25T08:30:00.000Z", preview.Samples[0].OccurredAt);
+        Assert.Equal("2026-09-25T08:00:00.000Z", preview.WindowSuggestion!.Since);
+        Assert.Equal("2026-09-25T10:00:00.000Z", preview.Until);
+    }
+
+    [Fact]
+    public async Task RecoveryPreviewAsync_WithoutOptions_SendsNoQuery()
+    {
+        _mockHandler.QueueSuccessResponse(RecoveryPreviewJson
+            .Replace(@"""circuitOpenedAt"": ""2026-09-25T08:00:00.000Z""", @"""circuitOpenedAt"": null")
+            .Replace(@"""windowSuggestion"": { ""since"": ""2026-09-25T08:00:00.000Z"", ""until"": ""2026-09-25T10:00:00.000Z"" }", @"""windowSuggestion"": null"));
+
+        var preview = await _client.Webhooks.RecoveryPreviewAsync("whk_1");
+
+        Assert.Equal("", _mockHandler.LastRequest!.RequestUri!.Query);
+        Assert.Null(preview.CircuitOpenedAt);
+        Assert.Null(preview.WindowSuggestion);
     }
 }

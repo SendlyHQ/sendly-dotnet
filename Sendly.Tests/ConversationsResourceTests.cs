@@ -89,6 +89,46 @@ public class ConversationsResourceTests : IDisposable
     #region Conversations
 
     [Fact]
+    public async Task SuggestRepliesAsync_PostsAndReadsTheSuggestions()
+    {
+        _mockHandler.QueueSuccessResponse(@"{
+            ""suggestions"": [
+                { ""text"": ""Yes, we open at 9am."", ""tone"": ""professional"" },
+                { ""text"": ""See you at 9!"", ""tone"": ""friendly"" }
+            ],
+            ""basedOnMessageId"": ""msg_in_1"",
+            ""model"": ""gpt-4o-mini""
+        }");
+
+        var result = await _client.Conversations.SuggestRepliesAsync("conv/1");
+
+        Assert.Equal(HttpMethod.Post, _mockHandler.LastRequest!.Method);
+        Assert.EndsWith("/conversations/conv%2F1/suggest-replies", _mockHandler.LastRequest.RequestUri!.AbsolutePath);
+        Assert.Equal(2, result.Suggestions.Count);
+        Assert.Equal("friendly", result.Suggestions[1].Tone);
+        Assert.Equal("msg_in_1", result.BasedOnMessageId);
+        Assert.Equal("gpt-4o-mini", result.Model);
+        Assert.False(result.Disabled);
+        Assert.Null(result.Reason);
+    }
+
+    [Fact]
+    public async Task SuggestRepliesAsync_ReadsDisabledAndReason()
+    {
+        _mockHandler.QueueSuccessResponse(@"{
+            ""suggestions"": [],
+            ""disabled"": true,
+            ""reason"": ""enterprise_policy""
+        }");
+
+        var result = await _client.Conversations.SuggestRepliesAsync("conv_1");
+
+        Assert.Empty(result.Suggestions);
+        Assert.True(result.Disabled);
+        Assert.Equal("enterprise_policy", result.Reason);
+    }
+
+    [Fact]
     public async Task ListAsync_ReadsTheConversationRowsTheApiSends()
     {
         var item = ConversationRow.TrimEnd().TrimEnd('}') + @",""isGroup"": false }";
@@ -113,6 +153,21 @@ public class ConversationsResourceTests : IDisposable
         Assert.Equal("sms", conversation.Channel);
         Assert.False(conversation.IsGroup);
         Assert.Null(conversation.Participants);
+    }
+
+    [Fact]
+    public async Task ListAsync_WithALabel_SendsTheLabelFilter()
+    {
+        _mockHandler.QueueSuccessResponse(@"{
+            ""data"": [],
+            ""pagination"": { ""total"": 0, ""limit"": 50, ""offset"": 0, ""hasMore"": false }
+        }");
+
+        await _client.Conversations.ListAsync(new ListConversationsOptions { Label = "lbl_vip", Status = "active" });
+
+        var query = _mockHandler.LastRequest!.RequestUri!.Query;
+        Assert.Contains("label=lbl_vip", query);
+        Assert.Contains("status=active", query);
     }
 
     [Fact]

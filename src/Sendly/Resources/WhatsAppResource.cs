@@ -305,6 +305,39 @@ public class WhatsAppSignupResource
         StartWhatsAppSignupRequest request,
         CancellationToken cancellationToken = default)
     {
+        return await CreateCoreAsync(request, null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Start connecting a number to WhatsApp, or add a number to a connected
+    /// WhatsApp Business account, with per-call options such as a
+    /// caller-supplied idempotency key. Behaves as
+    /// <see cref="CreateAsync(StartWhatsAppSignupRequest, CancellationToken)"/>.
+    ///
+    /// The SDK already generates a key per logical request automatically.
+    /// Supply your own key when you need idempotency across process restarts
+    /// or your own retry loops: repeating the request with the same key within
+    /// 24 hours returns the original result instead of starting, and charging
+    /// for, another signup. This is the safe way to retry a number added by
+    /// code after a timeout or a 5xx, which the client does not retry itself.
+    /// </summary>
+    /// <param name="request">The number, and for adding it by code the business account, delivery method and display name</param>
+    /// <param name="options">Per-call options, including an idempotency key</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The signup: with a <c>ConnectUrl</c> for a Facebook connection, or <c>verifying</c> for a number added by code</returns>
+    public async Task<WhatsAppSignupSession> CreateAsync(
+        StartWhatsAppSignupRequest request,
+        Models.IdempotentRequestOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        return await CreateCoreAsync(request, options?.IdempotencyKey, cancellationToken);
+    }
+
+    private async Task<WhatsAppSignupSession> CreateCoreAsync(
+        StartWhatsAppSignupRequest request,
+        string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
         if (request == null)
             throw new ValidationException("A signup 'request' is required");
         WhatsAppResource.ValidatePhone(request.PhoneNumber);
@@ -312,7 +345,7 @@ public class WhatsAppSignupResource
             throw new ValidationException("businessAccountId must be a non-empty string");
 
         var addingByCode = !string.IsNullOrEmpty(request.BusinessAccountId);
-        using var doc = await _client.PostAsync("/whatsapp/signup", request, null, true, cancellationToken, retryUnknownOutcomes: !addingByCode);
+        using var doc = await _client.PostAsync("/whatsapp/signup", request, idempotencyKey, true, cancellationToken, retryUnknownOutcomes: !addingByCode);
         return JsonSerializer.Deserialize<WhatsAppSignupSession>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -787,9 +820,40 @@ public class WhatsAppTemplatesResource
         CreateWhatsAppTemplateRequest request,
         CancellationToken cancellationToken = default)
     {
+        return await CreateCoreAsync(request, null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Create a template and submit it to Meta for review, with per-call
+    /// options such as a caller-supplied idempotency key. Behaves as
+    /// <see cref="CreateAsync(CreateWhatsAppTemplateRequest, CancellationToken)"/>.
+    ///
+    /// The SDK already generates a key per logical request automatically.
+    /// Supply your own key when you need idempotency across process restarts
+    /// or your own retry loops: repeating the request with the same key within
+    /// 24 hours returns the original result instead of creating the template
+    /// again.
+    /// </summary>
+    /// <param name="request">The template definition</param>
+    /// <param name="options">Per-call options, including an idempotency key</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The created template (status <c>PENDING</c>), with any submission warnings</returns>
+    public async Task<WhatsAppTemplate> CreateAsync(
+        CreateWhatsAppTemplateRequest request,
+        Models.IdempotentRequestOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        return await CreateCoreAsync(request, options?.IdempotencyKey, cancellationToken);
+    }
+
+    private async Task<WhatsAppTemplate> CreateCoreAsync(
+        CreateWhatsAppTemplateRequest request,
+        string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
         WhatsAppResource.ValidatePhone(request?.Sender);
 
-        using var doc = await _client.PostAsync("/whatsapp/templates", request, cancellationToken);
+        using var doc = await _client.PostAsync("/whatsapp/templates", request, idempotencyKey, true, cancellationToken);
         return JsonSerializer.Deserialize<WhatsAppTemplate>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
@@ -1339,7 +1403,7 @@ public class WhatsAppTemplateButton
 }
 
 /// <summary>
-/// Body for <see cref="WhatsAppTemplatesResource.CreateAsync"/>. Null values
+/// Body for <see cref="WhatsAppTemplatesResource.CreateAsync(CreateWhatsAppTemplateRequest, CancellationToken)"/>. Null values
 /// are omitted.
 /// </summary>
 public class CreateWhatsAppTemplateRequest
@@ -1412,20 +1476,25 @@ public class UpdateWhatsAppTemplateRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Body { get; set; }
 
-    /// <summary>Replacement footer.</summary>
+    /// <summary>
+    /// Replacement footer. An empty string removes the footer; null keeps it.
+    /// </summary>
     [JsonPropertyName("footer")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Footer { get; set; }
 
     /// <summary>
     /// Replacement text header. It can't contain <c>{{n}}</c> variables
-    /// (<c>template_header_variable_unsupported</c>).
+    /// (<c>template_header_variable_unsupported</c>). An empty string removes
+    /// the header; null keeps it.
     /// </summary>
     [JsonPropertyName("header")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Header { get; set; }
 
-    /// <summary>Replacement buttons.</summary>
+    /// <summary>
+    /// Replacement buttons. An empty list removes every button; null keeps them.
+    /// </summary>
     [JsonPropertyName("buttons")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<WhatsAppTemplateButton>? Buttons { get; set; }

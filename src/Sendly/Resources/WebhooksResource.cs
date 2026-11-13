@@ -219,6 +219,39 @@ public class WebhooksResource
     }
 
     /// <summary>
+    /// Preview a recovery: count what <see cref="RedeliverAsync"/> and
+    /// <see cref="BackfillAsync"/> would send for a window, without sending
+    /// anything.
+    /// </summary>
+    /// <remarks>
+    /// The window is at most 7 days long. Leave the options out for the last
+    /// 24 hours and every event type.
+    /// </remarks>
+    /// <param name="id">Webhook ID</param>
+    /// <param name="options">Window and event types to count</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The preview</returns>
+    public async Task<WebhookRecoveryPreview> RecoveryPreviewAsync(
+        string id,
+        RecoveryPreviewOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(id))
+            throw new ValidationException("Webhook ID is required");
+
+        var queryParams = new Dictionary<string, string>();
+        if (options?.Since is not null) queryParams["since"] = options.Since;
+        if (options?.Until is not null) queryParams["until"] = options.Until;
+        if (options?.EventTypes is { Count: > 0 }) queryParams["event_types"] = string.Join(",", options.EventTypes);
+
+        using var response = await _client.GetAsync(
+            $"/webhooks/{Uri.EscapeDataString(id)}/recovery-preview",
+            queryParams.Count > 0 ? queryParams : null,
+            cancellationToken);
+        return WebhookRecoveryPreview.FromJson(response.RootElement, _client.JsonOptions);
+    }
+
+    /// <summary>
     /// Rotates a webhook's secret.
     /// </summary>
     /// <param name="id">Webhook ID</param>
@@ -363,4 +396,17 @@ public sealed class BackfillOptions
     public string? Until { get; set; }
     public IList<string>? EventTypes { get; set; }
     public int? Limit { get; set; }
+}
+
+/// <summary>
+/// Options for <see cref="WebhooksResource.RecoveryPreviewAsync"/>.
+/// </summary>
+public sealed class RecoveryPreviewOptions
+{
+    /// <summary>The window's start, ISO-8601. Default: now − 24h.</summary>
+    public string? Since { get; set; }
+    /// <summary>The window's end, ISO-8601. Default: now.</summary>
+    public string? Until { get; set; }
+    /// <summary>Event types to count, sent comma-separated. Default: all.</summary>
+    public IList<string>? EventTypes { get; set; }
 }

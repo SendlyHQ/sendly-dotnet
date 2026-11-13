@@ -119,6 +119,26 @@ public class MessagesScheduleTests : IDisposable
         Assert.Equal("2030-01-01T10:00:00Z", body.GetProperty("scheduledAt").GetString());
         Assert.Equal("transactional", body.GetProperty("messageType").GetString());
         Assert.False(body.TryGetProperty("from", out _));
+        Assert.False(body.TryGetProperty("timezone", out _));
+    }
+
+    [Fact]
+    public async Task ScheduleAsync_WithATimezone_SendsItAndReadsItBack()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Created, ScheduleResponseJson.Replace(@"""UTC""", @"""America/New_York"""));
+
+        var message = await _client.Messages.ScheduleAsync(new ScheduleMessageRequest
+        {
+            To = "+15551234567",
+            Text = "hi",
+            ScheduledAt = "2030-01-01T10:00:00-05:00",
+            Timezone = "America/New_York",
+        });
+
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal("America/New_York", body.GetProperty("timezone").GetString());
+        Assert.Equal("2030-01-01T10:00:00-05:00", body.GetProperty("scheduledAt").GetString());
+        Assert.Equal("America/New_York", message.Timezone);
     }
 
     [Fact]

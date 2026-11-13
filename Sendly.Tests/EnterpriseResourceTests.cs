@@ -225,4 +225,106 @@ public class EnterpriseResourceTests : IDisposable
 
         Assert.Empty(_mockHandler.Requests);
     }
+
+    [Fact]
+    public async Task WorkspacesListAsync_WithOptions_GetsTheWorkspacesListWithTheFilters()
+    {
+        _mockHandler.QueueSuccessResponse(@"{
+            ""workspaces"": [{
+                ""id"": ""org_1"",
+                ""name"": ""Acme East"",
+                ""slug"": ""acme-east"",
+                ""status"": ""active"",
+                ""suspendedAt"": null,
+                ""suspendReason"": null,
+                ""verificationStatus"": null,
+                ""rejectionReason"": null,
+                ""verificationType"": null,
+                ""tollFreeNumber"": null,
+                ""creditBalance"": 1200,
+                ""keyCount"": 2,
+                ""messages30d"": 40,
+                ""delivered30d"": 38,
+                ""failed30d"": 2,
+                ""monthlyMessageQuota"": null,
+                ""messagesThisMonth"": 12,
+                ""quotaResetAt"": null,
+                ""createdAt"": ""2026-09-01T00:00:00.000Z"",
+                ""tags"": [{ ""id"": ""tag_1"", ""enterpriseAccountId"": ""ent_1"", ""name"": ""east"", ""color"": ""#6366f1"", ""createdAt"": ""2026-09-01T00:00:00.000Z"" }]
+            }],
+            ""pagination"": { ""total"": 21, ""limit"": 20, ""page"": 2, ""totalPages"": 2, ""hasMore"": false },
+            ""summary"": { ""totalCredits"": 5000, ""pendingVerifications"": [{ ""id"": ""org_2"", ""name"": ""Acme West"" }], ""verificationBreakdown"": { ""verified"": 3, ""pending"": 1, ""submitted"": 0, ""rejected"": 0, ""unverified"": 17 } },
+            ""maxWorkspaces"": 50,
+            ""workspacesUsed"": 21
+        }");
+
+        var page = await _client.Enterprise.Workspaces.ListAsync(new ListEnterpriseWorkspacesOptions
+        {
+            Limit = 20,
+            Page = 2,
+            Search = "acme",
+            Status = "active",
+            Verification = "unverified",
+            Sort = "name_asc",
+            Tags = new List<string> { "tag_1", "tag_2" },
+        });
+
+        var request = _mockHandler.LastRequest!;
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.EndsWith("/enterprise/workspaces", request.RequestUri!.AbsolutePath);
+        var query = Uri.UnescapeDataString(request.RequestUri.Query);
+        Assert.Contains("limit=20", query);
+        Assert.Contains("page=2", query);
+        Assert.Contains("search=acme", query);
+        Assert.Contains("status=active", query);
+        Assert.Contains("verification=unverified", query);
+        Assert.Contains("sort=name_asc", query);
+        Assert.Contains("tags=tag_1,tag_2", query);
+        Assert.DoesNotContain("compact", query);
+
+        var workspace = Assert.Single(page.Workspaces);
+        Assert.Equal("Acme East", workspace.Name);
+        Assert.Equal(1200, workspace.CreditBalance);
+        Assert.Equal(40, workspace.Messages30d);
+        Assert.Null(workspace.VerificationStatus);
+        Assert.Equal("east", Assert.Single(workspace.Tags).Name);
+        Assert.Equal(2, page.Pagination!.Page);
+        Assert.Equal(21, page.Pagination.Total);
+        Assert.Equal(5000, page.Summary!.TotalCredits);
+        Assert.Equal(17, page.Summary.VerificationBreakdown!.Unverified);
+        var pending = Assert.Single(page.Summary.PendingVerifications);
+        Assert.Equal("org_2", pending.Id);
+        Assert.Equal("Acme West", pending.Name);
+        Assert.Equal(50, page.MaxWorkspaces);
+        Assert.Equal(21, page.WorkspacesUsed);
+    }
+
+    [Fact]
+    public async Task WorkspacesListAsync_Compact_SendsCompactAndReadsTheShortRows()
+    {
+        _mockHandler.QueueSuccessResponse(@"{
+            ""workspaces"": [{ ""id"": ""org_1"", ""name"": ""Acme East"", ""creditBalance"": 1200 }],
+            ""summary"": { ""totalCredits"": 1200, ""pendingVerifications"": [], ""verificationBreakdown"": { ""verified"": 0, ""pending"": 0, ""submitted"": 0, ""rejected"": 0, ""unverified"": 1 } },
+            ""maxWorkspaces"": 50,
+            ""workspacesUsed"": 1
+        }");
+
+        var page = await _client.Enterprise.Workspaces.ListAsync(new ListEnterpriseWorkspacesOptions { Compact = true });
+
+        Assert.Equal("?compact=true", _mockHandler.LastRequest!.RequestUri!.Query);
+        Assert.Equal(1200, Assert.Single(page.Workspaces).CreditBalance);
+        Assert.Null(page.Pagination);
+        Assert.Empty(page.Summary!.PendingVerifications);
+    }
+
+    [Fact]
+    public async Task WorkspacesListAsync_WithoutOptions_StillReadsTheEnterpriseAccount()
+    {
+        _mockHandler.QueueSuccessResponse(@"{ ""id"": ""ent_1"", ""workspaces"": [{ ""id"": ""org_1"", ""name"": ""Acme East"", ""slug"": ""acme-east"", ""createdAt"": ""2026-09-01T00:00:00.000Z"" }] }");
+
+        var workspaces = await _client.Enterprise.Workspaces.ListAsync();
+
+        Assert.EndsWith("/enterprise/account", _mockHandler.LastRequest!.RequestUri!.AbsolutePath);
+        Assert.Equal("org_1", Assert.Single(workspaces).Id);
+    }
 }

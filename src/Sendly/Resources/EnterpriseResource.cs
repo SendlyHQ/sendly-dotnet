@@ -62,6 +62,26 @@ public class EnterpriseWorkspacesResource
         return workspaces;
     }
 
+    /// <summary>
+    /// List the workspaces the enterprise key's owner owns, a page at a time,
+    /// from <c>GET /enterprise/workspaces</c>: each with its verification,
+    /// credits, keys, 30-day message counts and tags, plus totals over all of
+    /// them. Filter by name, status, verification and tags, and sort.
+    /// <see cref="ListAsync(CancellationToken)"/> keeps returning the
+    /// workspaces of the enterprise account record instead.
+    /// </summary>
+    /// <param name="options">Filters and paging; null lists the first page of 50</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The page, with <c>Pagination</c>, <c>Summary</c> and the workspace limits</returns>
+    public async Task<EnterpriseWorkspaceListResponse> ListAsync(
+        ListEnterpriseWorkspacesOptions? options,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _client.GetAsync("/enterprise/workspaces", options?.ToQueryParams(), cancellationToken);
+        return JsonSerializer.Deserialize<EnterpriseWorkspaceListResponse>(response.RootElement.GetRawText(), _client.JsonOptions)
+            ?? new EnterpriseWorkspaceListResponse();
+    }
+
     public async Task<DeleteEnterpriseWorkspaceResponse> DeleteAsync(
         string workspaceId,
         CancellationToken cancellationToken = default)

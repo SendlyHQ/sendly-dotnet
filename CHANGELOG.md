@@ -1,5 +1,23 @@
 # Sendly (.NET)
 
+## 4.7.0
+
+### Minor Changes
+
+- **`SuggestRepliesResponse` gains `Disabled` and `Reason`.** When the workspace's enterprise account turned AI suggestions off, `Conversations.SuggestRepliesAsync` returns no suggestions, `Disabled` is true and `Reason` is `"enterprise_policy"`.
+- **`Message` gains `MessageFormat`, `BatchId` and `MediaUrls`.** `MessageFormat` is the channel and format the message went in (`sms`, `mms`, `whatsapp` or `rcs`, with constants on `Message.Formats`), `BatchId` the batch that sent it and `MediaUrls` its media. They are read from `Messages.GetAsync` and `Messages.ListAsync`, and are null when the API leaves them out.
+- **Preview a webhook recovery.** `Webhooks.RecoveryPreviewAsync(id, new RecoveryPreviewOptions { Since, Until, EventTypes })` reads `GET /webhooks/:id/recovery-preview` and returns the new `WebhookRecoveryPreview` (`CircuitState`, `CircuitOpenedAt`, `FailureCount`, `AuditFailures`, `MissingFromMessages`, `Histogram`, `Samples`, `WindowSuggestion`, `Since`, `Until`, `IsCircuitOpen`): what `RedeliverAsync` and `BackfillAsync` would send for the window, without sending anything. Leave the options out for the last 24 hours and every event type; `EventTypes` goes as one comma-separated value, and the window is at most 7 days.
+- **Short codes.** `client.ShortCodes.ListAsync()` lists every application and code of the workspace (`ShortCodeListResponse.ShortCodes`, each a `ShortCode` with `Code`, `Status`, `ReviewStatus`, `UseCase`, `CreatedAt` and `Billing`). `client.ShortCodes.Application` has `GetAsync()` (the `ShortCodeApplicationView`: `Application`, `Prefill`, `Editable`, `LockMessage`, documents, `Quote`, `Billing`, `Verification` and `Carriers`), `UpdateAsync(ShortCodeApplicationInput, options)` (`PUT`, creating the application on the first save; `IgnoredFields` names fields that were not saved), `CheckAsync(input)` (the preflight: `Ok`, `Issues`, `MissingDocuments`) and `SubmitAsync(new SubmitShortCodeApplicationRequest { AcceptTerms = true }, options)`, which charges the one-time $999 setup fee and returns `Submitted`, `AlreadySubmitted`, `Notified` and `Payment`. `UpdateAsync` and `SubmitAsync` take an optional `IdempotentRequestOptions`. Statuses are plain strings, with constants on `ShortCodeStatus` and `ShortCodeReviewStatus`.
+- **Your own idempotency key for WhatsApp signups and templates.** `WhatsApp.Signup.CreateAsync(StartWhatsAppSignupRequest, IdempotentRequestOptions)` and `WhatsApp.Templates.CreateAsync(CreateWhatsAppTemplateRequest, IdempotentRequestOptions)` send your key as `Idempotency-Key`, so a repeat within 24 hours returns the first answer instead of starting (and charging for) another signup or creating the template twice. A number added by code is still never retried automatically after a 5xx, timeout or network error; repeat it yourself with the same key.
+- **Webhook `Description` and `Metadata`.** `CreateWebhookOptions` and `UpdateWebhookOptions` gain `Description` and `Metadata`, and `Webhook` reads them back. On an update, setting either to null sends `null` and clears it; leaving it unset sends nothing.
+- **`ScheduleMessageRequest.Timezone`.** Sent as `timezone` with `Messages.ScheduleAsync`, stored with the message and returned as sent on `ScheduledMessage.Timezone` (`UTC` when left out). It does not change how `ScheduledAt` is read, so give that an offset or `Z`.
+- **`ListConversationsOptions.Label`** lists only the conversations with that label id.
+- **Enterprise workspaces list with filters.** `Enterprise.Workspaces.ListAsync(new ListEnterpriseWorkspacesOptions { Limit, Page, Search, Status, Verification, Sort, Compact, Tags })` reads `GET /enterprise/workspaces` and returns `EnterpriseWorkspaceListResponse` (`Workspaces` of `EnterpriseWorkspaceListItem` with status, verification, credits, keys, 30-day message counts and `Tags`; `Pagination`; `Summary`; `MaxWorkspaces`; `WorkspacesUsed`). `ListAsync()` without options still reads the workspaces of `GET /enterprise/account`.
+
+### Patch Changes
+
+- `UpdateWhatsAppTemplateRequest` documents how to remove parts of a template: an empty `Footer` or `Header` removes it, and an empty `Buttons` list removes every button (null keeps them).
+
 ## 4.5.0
 
 ### Minor Changes

@@ -233,6 +233,21 @@ future; any other time is refused with a `400` `invalid_scheduled_time`
 constructor, so `new ScheduleMessageRequest { To = ..., Text = ..., ScheduledAt = ... }`
 works too.
 
+`ScheduleMessageRequest.Timezone` (such as `America/New_York`) is stored with
+the message and returned as sent on `ScheduledMessage.Timezone`; the API stores
+`UTC` when it is left out. It does not change how `ScheduledAt` is read, so give
+`ScheduledAt` an offset or `Z`:
+
+```csharp
+var local = await client.Messages.ScheduleAsync(new ScheduleMessageRequest
+{
+    To = "+12025550143",
+    Text = "Your appointment is at 10am.",
+    ScheduledAt = "2030-01-01T09:00:00-05:00",
+    Timezone = "America/New_York",
+});
+```
+
 ### Batch Messages
 
 ```csharp
@@ -371,10 +386,13 @@ original response, and reusing it with a different body is rejected with a
 `422` (`idempotency_key_mismatch`), so derive keys from something stable in
 your domain, like an order id. `SendBatchAsync` sends no automatic key, because
 the API already deduplicates identical batches by their contents. The RCS
-registration writes (`client.Rcs.Brands` and `client.Rcs.Agents`) and the voice
-writes (`client.Calls` and `client.Voice`) take an optional
-`IdempotentRequestOptions` too; their `PATCH`, `PUT` and `DELETE` calls send a
-key only when you supply one.
+registration writes (`client.Rcs.Brands` and `client.Rcs.Agents`), the voice
+writes (`client.Calls` and `client.Voice`) and the short code application
+writes (`client.ShortCodes.Application.UpdateAsync` and `SubmitAsync`) take an
+optional `IdempotentRequestOptions` too; their `PATCH`, `PUT` and `DELETE`
+calls send a key only when you supply one. `client.WhatsApp.Signup.CreateAsync`
+and `client.WhatsApp.Templates.CreateAsync` have `IdempotentRequestOptions`
+overloads as well.
 
 Keys are validated before any network call: 1 to 255 printable ASCII
 characters, otherwise `ValidationException`. Empty and whitespace-only values
@@ -667,26 +685,52 @@ carrier), `changes_requested`, `pending`, `active`, `failed`, `suspended` and
 
 ## Short Codes
 
-> **This SDK has no short-code helpers.** There is no `client.ShortCodes`
-> resource and no short-code model. Everything below is plain REST — call it
-> with your own HTTP client, or reach it through the Sendly CLI or dashboard.
+A short code is a 5 or 6 digit US sender. Getting one is an application, not a
+purchase: you fill it in, Sendly reviews it, the carrier forms are signed,
+Sendly files it, and each carrier certifies the code separately. Reads need the
+`short_codes:read` scope and writes `short_codes:write`; every call answers
+`404` `short_codes_not_enabled` (`NotFoundException`) until short codes are
+enabled for the account.
 
-Short-code applications live at these endpoints, authenticated with the same
-`Authorization: Bearer <api key>` header this client uses:
+```csharp
+// Save answers; the first save creates the application. A null property is
+// not sent and keeps its saved value; an empty string clears it.
+var view = await client.ShortCodes.Application.UpdateAsync(new ShortCodeApplicationInput
+{
+    UseCase = "Delivery alerts for Acme orders",
+    MessageFrequency = "4 messages per month",
+    CampaignKeyword = "JOIN",
+});
 
-| Method | Path | Scope |
-|--------|------|-------|
-| `GET` | `/api/v1/short_codes` | `short_codes:read` |
-| `POST` | `/api/v1/short_codes/requests` | `short_codes:write` |
-| `GET` | `/api/v1/short_codes/application` | `short_codes:read` |
-| `PUT` | `/api/v1/short_codes/application` | `short_codes:write` |
-| `POST` | `/api/v1/short_codes/application/preflight` | `short_codes:read` |
-| `POST` | `/api/v1/short_codes/application/submit` | `short_codes:write` |
+// Check against the carrier rules without changing anything
+var check = await client.ShortCodes.Application.CheckAsync();
+foreach (var issue in check.Issues)
+    Console.WriteLine($"{issue.Path}: {issue.Message}");
 
-You can still follow an application from C# through webhooks:
-`Webhook.EventTypes.ShortCodeActionRequired`, `ShortCodeRejected`,
-`ShortCodeFiled` and `ShortCodeLive` arrive like any other lifecycle event and
-decode with `ObjectAs<T>()`.
+// Submit: charges the one-time $999 setup fee, so AcceptTerms must be true.
+// Submitting twice is safe; the second call reports AlreadySubmitted.
+var submitted = await client.ShortCodes.Application.SubmitAsync(
+    new SubmitShortCodeApplicationRequest { AcceptTerms = true },
+    new IdempotentRequestOptions { IdempotencyKey = "acme-short-code-submit" });
+Console.WriteLine(submitted.Payment?.Charged);
+
+// Follow the review, the carriers and the billing
+var current = await client.ShortCodes.Application.GetAsync();
+Console.WriteLine($"{current.Application.ReviewStatus}: {current.Carriers.Approved}/{current.Carriers.Total} carriers");
+Console.WriteLine(current.Billing?.Lease.State);
+
+// Every application and code, newest first
+var codes = await client.ShortCodes.ListAsync();
+foreach (var code in codes.ShortCodes.Where(c => c.Status == ShortCodeStatus.Active))
+    Console.WriteLine(code.Code);
+```
+
+`SubmitAsync` answers `403` `verification_required` until the business is
+verified, `422` `short_code_invalid_application` (a `ValidationException`)
+naming every missing field, and `402` (`InsufficientCreditsException`) when the
+fee can't be charged. `POST /api/v1/short_codes/requests` has no helper. The
+lifecycle arrives as webhooks: `Webhook.EventTypes.ShortCodeActionRequired`,
+`ShortCodeRejected`, `ShortCodeFiled`, `ShortCodeLive` and the others.
 
 ## Business Upgrade
 
@@ -787,6 +831,9 @@ await client.WhatsApp.Templates.UpdateAsync(template.Id, new UpdateWhatsAppTempl
     Body = "Hi {{1}}, your order {{2}} is on its way!",
     Examples = new() { ["1"] = "Sam", ["2"] = "#4821" }
 });
+// An empty Footer or Header removes it, and an empty Buttons list removes
+// every button; null leaves them as they are
+await client.WhatsApp.Templates.UpdateAsync(template.Id, new UpdateWhatsAppTemplateRequest { Footer = "", Buttons = new() });
 await client.WhatsApp.Templates.DeleteAsync("wat_xxx");
 
 // 4. Check the 24-hour window (your sender first, then the recipient). The
@@ -1751,6 +1798,7 @@ Threaded inbound/outbound history per phone number.
 var conversations = await client.Conversations.ListAsync(new ListConversationsOptions
 {
     Status = Conversation.Statuses.Active,
+    Label = "lbl_xxx", // optional: only conversations with this label id
     Limit = 25,
 });
 foreach (var c in conversations.Data)
@@ -1912,7 +1960,9 @@ var created = await client.Webhooks.CreateAsync(new CreateWebhookOptions
 {
     Url = "https://acme.example/webhooks/sendly",
     Events = new List<string> { Webhook.EventTypes.MessageDelivered, Webhook.EventTypes.MessageFailed },
-    Mode = Webhook.Modes.Live
+    Description = "Order updates",
+    Mode = Webhook.Modes.Live,
+    Metadata = new Dictionary<string, object> { ["team"] = "ops" }
 });
 
 // CreateAsync returns a WebhookCreatedResponse: the webhook is nested, and the
@@ -1935,6 +1985,9 @@ await client.Webhooks.UpdateAsync("whk_xxx", new UpdateWebhookOptions
     Events = new List<string> { "message.delivered", "message.failed", "message.sent" },
     IsActive = true
 });
+
+// Setting Description or Metadata to null clears it
+await client.Webhooks.UpdateAsync("whk_xxx", new UpdateWebhookOptions { Description = null });
 
 // Test a webhook. When your endpoint does not accept the test delivery, the
 // API answers 400 and this throws a ValidationException with its message.
@@ -1977,6 +2030,13 @@ foreach (var d in deliveries)
 var delivery = await client.Webhooks.GetDeliveryAsync("whk_xxx", "del_xxx");
 await client.Webhooks.RetryDeliveryAsync("whk_xxx", "del_xxx");
 
+// See what a recovery would send, without sending anything
+var preview = await client.Webhooks.RecoveryPreviewAsync("whk_xxx", new RecoveryPreviewOptions
+{
+    Since = DateTime.UtcNow.AddDays(-2).ToString("s") + "Z",
+});
+Console.WriteLine($"{preview.AuditFailures.Total} failed, {preview.MissingFromMessages.Total} missing");
+
 // After an outage: reset the breaker first, then replay
 await client.Webhooks.ResetCircuitAsync("whk_xxx");
 
@@ -1996,8 +2056,9 @@ await client.Webhooks.BackfillAsync("whk_xxx", new BackfillOptions
 ```
 
 `RedeliverAsync` and `BackfillAsync` return the raw `JsonDocument` the API
-answered with. Both reject with `409` while the circuit is open, so call
-`ResetCircuitAsync` first. A redelivery keeps the original event id, and a
+answered with; `RecoveryPreviewAsync` returns a `WebhookRecoveryPreview` and
+works while the circuit is open. `RedeliverAsync` and `BackfillAsync` reject with
+`409` while the circuit is open, so call `ResetCircuitAsync` first. A redelivery keeps the original event id, and a
 backfilled event carries the event id the original dispatch used, so dedupe on
 `event.id`. Do not dedupe on `data.object.id`: a message's sent and delivered
 events share it.
@@ -2295,6 +2356,9 @@ message.Metadata     // Dictionary<string, object>? (nullable)
 message.AiMetadata   // AiMetadata? — intent/sentiment on inbound messages
 message.Fallback     // WhatsAppSmsFallback? on a WhatsApp message sent with FallbackToSms
 message.FallbackOf   // string? on an SMS fallback, the WhatsApp message it replaced
+message.MessageFormat // string? sms, mms, whatsapp or rcs (Message.Formats)
+message.BatchId      // string? the batch that sent it, for a batch message
+message.MediaUrls    // List<string>? the media sent with it, when it has media
 
 // Helper properties
 message.IsDelivered  // bool
@@ -2356,10 +2420,6 @@ Use test API keys (`sk_test_v1_xxx`) with these test numbers:
 These parts of the platform have no helper on `SendlyClient`. Call the REST API
 directly if you need them; the notes below say what the SDK *does* carry.
 
-- **Short codes.** No resource. Subscribing to the lifecycle events works
-  (`Webhook.EventTypes.ShortCodeActionRequired`, `ShortCodeRejected`,
-  `ShortCodeFiled`, `ShortCodeLive`), but leasing, filing and provisioning are
-  dashboard- or REST-only — see [Short Codes](#short-codes).
 - **Porting.** No resource. Again, the event constants exist
   (`PortCompleted`, `PortOutRequested`, `PortOutCompleted`, `PortOutRejected`,
   `PortOutCancelled`).
@@ -2410,7 +2470,16 @@ Three provisioning modes:
 
 ```csharp
 var ws = await client.Enterprise.Workspaces.CreateAsync("Acme Insurance");
-var list = await client.Enterprise.Workspaces.ListAsync();
+var list = await client.Enterprise.Workspaces.ListAsync(); // from GET /enterprise/account
+// A page of GET /enterprise/workspaces, with filters, counts, tags and totals
+var page = await client.Enterprise.Workspaces.ListAsync(new ListEnterpriseWorkspacesOptions
+{
+    Search = "acme",
+    Verification = "unverified",
+    Sort = "credits_desc",
+    Limit = 20,
+});
+Console.WriteLine($"{page.Pagination?.Total} workspaces, {page.Summary?.TotalCredits} credits in all");
 var detail = await client.Enterprise.Workspaces.GetAsync("ws_xxx");
 await client.Enterprise.Workspaces.SuspendAsync("ws_xxx");
 await client.Enterprise.Workspaces.ResumeAsync("ws_xxx");

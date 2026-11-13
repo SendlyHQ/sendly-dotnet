@@ -105,6 +105,44 @@ public class MessagesResourceTests : IDisposable
         Assert.NotNull(message.DeliveredAt);
         Assert.Equal(2, message.Segments);
         Assert.Equal("inbound", message.Direction);
+        Assert.Equal(Message.Formats.Sms, message.MessageFormat);
+        Assert.Null(message.BatchId);
+        Assert.Null(message.MediaUrls);
+    }
+
+    [Fact]
+    public async Task GetAsync_ReadsMessageFormatBatchIdAndMediaUrls()
+    {
+        _mockHandler.QueueSuccessResponse(@"{
+            ""id"": ""msg_mms"",
+            ""to"": ""+15555550100"",
+            ""from"": ""+15555550199"",
+            ""text"": ""Your receipt"",
+            ""status"": ""delivered"",
+            ""direction"": ""outbound"",
+            ""error"": null,
+            ""errorCode"": null,
+            ""retryCount"": 0,
+            ""segments"": 1,
+            ""creditsUsed"": 4,
+            ""isSandbox"": false,
+            ""createdAt"": ""2026-11-01T10:00:00.000Z"",
+            ""deliveredAt"": ""2026-11-01T10:00:02.000Z"",
+            ""message_format"": ""mms"",
+            ""messageFormat"": ""mms"",
+            ""batch_id"": ""batch_1"",
+            ""batchId"": ""batch_1"",
+            ""media_urls"": [""https://cdn.example.com/r.png""],
+            ""mediaUrls"": [""https://cdn.example.com/r.png""]
+        }");
+
+        var message = await _client.Messages.GetAsync("msg_mms");
+
+        Assert.Equal(HttpMethod.Get, _mockHandler.LastRequest!.Method);
+        Assert.EndsWith("/messages/msg_mms", _mockHandler.LastRequest.RequestUri!.AbsolutePath);
+        Assert.Equal(Message.Formats.Mms, message.MessageFormat);
+        Assert.Equal("batch_1", message.BatchId);
+        Assert.Equal(new List<string> { "https://cdn.example.com/r.png" }, message.MediaUrls);
     }
 
     [Fact]

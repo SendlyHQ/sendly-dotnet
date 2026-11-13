@@ -121,6 +121,11 @@ public class ListConversationsOptions
     public int? Offset { get; set; }
     public string? Status { get; set; }
 
+    /// <summary>
+    /// Only conversations with this label, by the label's id (<c>lbl_...</c>).
+    /// </summary>
+    public string? Label { get; set; }
+
     internal Dictionary<string, string> ToQueryParams()
     {
         var @params = new Dictionary<string, string>();
@@ -133,6 +138,9 @@ public class ListConversationsOptions
 
         if (!string.IsNullOrEmpty(Status))
             @params["status"] = Status;
+
+        if (!string.IsNullOrEmpty(Label))
+            @params["label"] = Label;
 
         return @params;
     }
@@ -231,4 +239,18 @@ public class SuggestRepliesResponse
     public string? BasedOnMessageId { get; set; }
 
     public string? Model { get; set; }
+
+    /// <summary>
+    /// True when the workspace's enterprise account turned AI suggestions
+    /// off; <see cref="Suggestions"/> is then empty.
+    /// </summary>
+    [JsonPropertyName("disabled")]
+    public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Why suggestions are off: <c>enterprise_policy</c>. Null unless
+    /// <see cref="Disabled"/> is true.
+    /// </summary>
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
 }

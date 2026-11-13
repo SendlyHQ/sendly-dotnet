@@ -35,6 +35,17 @@ public class Message
     }
 
     /// <summary>
+    /// Message format constants: the values of <see cref="MessageFormat"/>.
+    /// </summary>
+    public static class Formats
+    {
+        public const string Sms = "sms";
+        public const string Mms = "mms";
+        public const string WhatsApp = "whatsapp";
+        public const string Rcs = "rcs";
+    }
+
+    /// <summary>
     /// Sender type constants: the values of <see cref="SenderType"/>.
     /// </summary>
     public static class SenderTypes
@@ -224,6 +235,27 @@ public class Message
     /// </summary>
     [JsonPropertyName("fallbackOf")]
     public string? FallbackOf { get; set; }
+
+    /// <summary>
+    /// The channel and format the message was sent in: <c>sms</c>,
+    /// <c>mms</c>, <c>whatsapp</c> or <c>rcs</c> (see <see cref="Formats"/>).
+    /// A value the API adds later comes through unchanged. Null when the
+    /// response has none.
+    /// </summary>
+    [JsonPropertyName("messageFormat")]
+    public string? MessageFormat { get; set; }
+
+    /// <summary>
+    /// The batch that sent the message. Null unless it is a batch message.
+    /// </summary>
+    [JsonPropertyName("batchId")]
+    public string? BatchId { get; set; }
+
+    /// <summary>
+    /// The media sent with the message. Null unless it has media.
+    /// </summary>
+    [JsonPropertyName("mediaUrls")]
+    public List<string>? MediaUrls { get; set; }
 
     /// <summary>
     /// Whether the message was delivered.

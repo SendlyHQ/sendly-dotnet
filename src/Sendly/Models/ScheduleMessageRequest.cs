@@ -28,6 +28,17 @@ public class ScheduleMessageRequest
     public string ScheduledAt { get; set; }
 
     /// <summary>
+    /// A time zone name such as <c>America/New_York</c>, stored with the
+    /// message and returned as sent on <see cref="ScheduledMessage.Timezone"/>.
+    /// It does not change how <see cref="ScheduledAt"/> is read, so give that
+    /// an offset or <c>Z</c>. Omitted when null, and the API then stores
+    /// <c>UTC</c>.
+    /// </summary>
+    [JsonPropertyName("timezone")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Timezone { get; set; }
+
+    /// <summary>
     /// Optional sender ID.
     /// </summary>
     [JsonPropertyName("from")]

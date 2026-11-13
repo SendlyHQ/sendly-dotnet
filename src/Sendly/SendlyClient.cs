@@ -141,6 +141,12 @@ public class SendlyClient : IDisposable
     public RcsResource Rcs { get; }
 
     /// <summary>
+    /// Gets the Short Codes resource: apply for a US short code, check and
+    /// submit the application, and list the workspace's codes.
+    /// </summary>
+    public ShortCodesResource ShortCodes { get; }
+
+    /// <summary>
     /// Gets the Calls resource: place phone calls handled by your AI agents,
     /// list and inspect calls, end a call, and download recordings.
     /// </summary>
@@ -221,6 +227,7 @@ public class SendlyClient : IDisposable
         Links = new LinksResource(this);
         WhatsApp = new WhatsAppResource(this);
         Rcs = new RcsResource(this);
+        ShortCodes = new ShortCodesResource(this);
         Calls = new CallsResource(this);
         Voice = new VoiceResource(this);
     }

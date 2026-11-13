@@ -145,6 +145,41 @@ public class CampaignsResourceTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateAsync_SendsFieldNamesTheApiReads()
+    {
+        _mockHandler.QueueSuccessResponse(CampaignJson.Replace(@"""status"": ""completed""", @"""status"": ""draft"""));
+
+        await _client.Campaigns.CreateAsync(new CreateCampaignRequest
+        {
+            Name = "Spring sale",
+            Text = "20% off this weekend",
+            ContactListIds = new List<string> { "lst_1" },
+            TemplateId = "tpl_1"
+        });
+
+        var request = _mockHandler.LastRequest!;
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.EndsWith("/campaigns", request.RequestUri!.AbsolutePath);
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal("Spring sale", body.GetProperty("name").GetString());
+        Assert.Equal("20% off this weekend", body.GetProperty("text").GetString());
+        Assert.Equal("lst_1", Assert.Single(body.GetProperty("contact_list_ids").EnumerateArray()).GetString());
+        Assert.Equal("tpl_1", body.GetProperty("template_id").GetString());
+        Assert.Equal(4, body.EnumerateObject().Count());
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SendsOnlyTheFieldsSet()
+    {
+        _mockHandler.QueueSuccessResponse(CampaignJson);
+
+        await _client.Campaigns.UpdateAsync("camp_1", new UpdateCampaignRequest { Text = "New text" });
+
+        Assert.Equal(HttpMethod.Patch, _mockHandler.LastRequest!.Method);
+        Assert.Equal("{\"text\":\"New text\"}", await _mockHandler.LastRequest.Content!.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task ScheduleAsync_SendsTheScheduledAtKeyTheApiReads()
     {
         _mockHandler.QueueSuccessResponse(CampaignJson.Replace(@"""status"": ""completed""", @"""status"": ""scheduled"""));

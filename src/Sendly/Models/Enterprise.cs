@@ -1612,3 +1612,248 @@ public class VerificationDocumentUploadResponse
             ?? new VerificationDocumentUploadResponse();
     }
 }
+
+/// <summary>
+/// Filters and paging for <see cref="Sendly.Resources.EnterpriseWorkspacesResource.ListAsync(ListEnterpriseWorkspacesOptions, CancellationToken)"/>.
+/// Every property is optional; one left null is not sent.
+/// </summary>
+public class ListEnterpriseWorkspacesOptions
+{
+    /// <summary>Page size, up to 100. Defaults to 50.</summary>
+    public int? Limit { get; set; }
+
+    /// <summary>The page, starting at 1. Defaults to 1.</summary>
+    public int? Page { get; set; }
+
+    /// <summary>Only workspaces whose name contains this, ignoring case.</summary>
+    public string? Search { get; set; }
+
+    /// <summary>Only workspaces with this status, such as <c>active</c> or <c>suspended</c>. <c>all</c>, the default, keeps all.</summary>
+    public string? Status { get; set; }
+
+    /// <summary>
+    /// Only workspaces whose verification has this status. <c>unverified</c>
+    /// keeps those with none; <c>all</c>, the default, keeps all.
+    /// </summary>
+    public string? Verification { get; set; }
+
+    /// <summary>
+    /// <c>created_desc</c> (the default, newest first), <c>created_asc</c>,
+    /// <c>name_asc</c>, <c>name_desc</c>, <c>credits_desc</c> or <c>credits_asc</c>.
+    /// </summary>
+    public string? Sort { get; set; }
+
+    /// <summary>
+    /// True returns every workspace's id, name and balance instead, ignoring
+    /// the filters and paging.
+    /// </summary>
+    public bool? Compact { get; set; }
+
+    /// <summary>Only workspaces with at least one of these tag ids.</summary>
+    public List<string>? Tags { get; set; }
+
+    internal Dictionary<string, string> ToQueryParams()
+    {
+        var @params = new Dictionary<string, string>();
+
+        if (Limit.HasValue)
+            @params["limit"] = Math.Min(Limit.Value, 100).ToString();
+        if (Page.HasValue)
+            @params["page"] = Page.Value.ToString();
+        if (!string.IsNullOrEmpty(Search))
+            @params["search"] = Search;
+        if (!string.IsNullOrEmpty(Status))
+            @params["status"] = Status;
+        if (!string.IsNullOrEmpty(Verification))
+            @params["verification"] = Verification;
+        if (!string.IsNullOrEmpty(Sort))
+            @params["sort"] = Sort;
+        if (Compact == true)
+            @params["compact"] = "true";
+        if (Tags is { Count: > 0 })
+            @params["tags"] = string.Join(",", Tags);
+
+        return @params;
+    }
+}
+
+/// <summary>A tag on an enterprise workspace.</summary>
+public class EnterpriseWorkspaceTag
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("enterpriseAccountId")]
+    public string EnterpriseAccountId { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>A hex color, such as <c>#6366f1</c>.</summary>
+    [JsonPropertyName("color")]
+    public string? Color { get; set; }
+
+    [JsonPropertyName("createdAt")]
+    public string? CreatedAt { get; set; }
+}
+
+/// <summary>
+/// One workspace on a page of <c>GET /enterprise/workspaces</c>. A compact
+/// list carries only <see cref="Id"/>, <see cref="Name"/> and
+/// <see cref="CreditBalance"/>.
+/// </summary>
+public class EnterpriseWorkspaceListItem
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("slug")]
+    public string? Slug { get; set; }
+
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    [JsonPropertyName("suspendedAt")]
+    public string? SuspendedAt { get; set; }
+
+    [JsonPropertyName("suspendReason")]
+    public string? SuspendReason { get; set; }
+
+    /// <summary>Null when the workspace has no verification.</summary>
+    [JsonPropertyName("verificationStatus")]
+    public string? VerificationStatus { get; set; }
+
+    [JsonPropertyName("rejectionReason")]
+    public string? RejectionReason { get; set; }
+
+    [JsonPropertyName("verificationType")]
+    public string? VerificationType { get; set; }
+
+    [JsonPropertyName("tollFreeNumber")]
+    public string? TollFreeNumber { get; set; }
+
+    [JsonPropertyName("creditBalance")]
+    public long CreditBalance { get; set; }
+
+    /// <summary>API keys in the workspace that were not revoked.</summary>
+    [JsonPropertyName("keyCount")]
+    public int KeyCount { get; set; }
+
+    /// <summary>Messages in the last 30 days.</summary>
+    [JsonPropertyName("messages30d")]
+    public int Messages30d { get; set; }
+
+    [JsonPropertyName("delivered30d")]
+    public int Delivered30d { get; set; }
+
+    [JsonPropertyName("failed30d")]
+    public int Failed30d { get; set; }
+
+    /// <summary>The monthly message cap, or null for none.</summary>
+    [JsonPropertyName("monthlyMessageQuota")]
+    public int? MonthlyMessageQuota { get; set; }
+
+    [JsonPropertyName("messagesThisMonth")]
+    public int MessagesThisMonth { get; set; }
+
+    [JsonPropertyName("quotaResetAt")]
+    public string? QuotaResetAt { get; set; }
+
+    [JsonPropertyName("createdAt")]
+    public string? CreatedAt { get; set; }
+
+    [JsonPropertyName("tags")]
+    public List<EnterpriseWorkspaceTag> Tags { get; set; } = new();
+}
+
+/// <summary>How many workspaces have each verification status.</summary>
+public class EnterpriseWorkspaceVerificationBreakdown
+{
+    [JsonPropertyName("verified")]
+    public int Verified { get; set; }
+
+    [JsonPropertyName("pending")]
+    public int Pending { get; set; }
+
+    /// <summary>Submitted, in progress, or waiting on the carrier.</summary>
+    [JsonPropertyName("submitted")]
+    public int Submitted { get; set; }
+
+    [JsonPropertyName("rejected")]
+    public int Rejected { get; set; }
+
+    /// <summary>No verification, or one in any other state.</summary>
+    [JsonPropertyName("unverified")]
+    public int Unverified { get; set; }
+}
+
+/// <summary>Totals over every workspace the key's owner owns, before filters and paging.</summary>
+public class EnterpriseWorkspaceListTotals
+{
+    /// <summary>The credit balance of every workspace added up.</summary>
+    [JsonPropertyName("totalCredits")]
+    public long TotalCredits { get; set; }
+
+    /// <summary>
+    /// Up to 10 workspaces whose verification is pending or submitted.
+    /// </summary>
+    [JsonPropertyName("pendingVerifications")]
+    public List<EnterpriseWorkspacePendingVerification> PendingVerifications { get; set; } = new();
+
+    [JsonPropertyName("verificationBreakdown")]
+    public EnterpriseWorkspaceVerificationBreakdown? VerificationBreakdown { get; set; }
+}
+
+/// <summary>A workspace whose verification is waiting, in <see cref="EnterpriseWorkspaceListTotals.PendingVerifications"/>.</summary>
+public class EnterpriseWorkspacePendingVerification
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <summary>Page-number pagination of a workspace list.</summary>
+public class EnterpriseWorkspacePagination
+{
+    [JsonPropertyName("total")]
+    public int Total { get; set; }
+
+    [JsonPropertyName("limit")]
+    public int? Limit { get; set; }
+
+    [JsonPropertyName("page")]
+    public int? Page { get; set; }
+
+    [JsonPropertyName("totalPages")]
+    public int? TotalPages { get; set; }
+
+    [JsonPropertyName("hasMore")]
+    public bool HasMore { get; set; }
+}
+
+/// <summary>A page of <c>GET /enterprise/workspaces</c>.</summary>
+public class EnterpriseWorkspaceListResponse
+{
+    [JsonPropertyName("workspaces")]
+    public List<EnterpriseWorkspaceListItem> Workspaces { get; set; } = new();
+
+    /// <summary>Null for a compact list, which is not paged.</summary>
+    [JsonPropertyName("pagination")]
+    public EnterpriseWorkspacePagination? Pagination { get; set; }
+
+    [JsonPropertyName("summary")]
+    public EnterpriseWorkspaceListTotals? Summary { get; set; }
+
+    /// <summary>How many workspaces the account may have.</summary>
+    [JsonPropertyName("maxWorkspaces")]
+    public int MaxWorkspaces { get; set; }
+
+    /// <summary>How many workspaces the account has.</summary>
+    [JsonPropertyName("workspacesUsed")]
+    public int WorkspacesUsed { get; set; }
+}
