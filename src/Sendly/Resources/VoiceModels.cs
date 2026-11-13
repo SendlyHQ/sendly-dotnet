@@ -372,8 +372,9 @@ public class VoiceAgentConnection
 
 /// <summary>
 /// How Sendly reaches your own agent, sent as
-/// <see cref="CreateVoiceAgentRequest.Connection"/> and
-/// <see cref="UpdateVoiceAgentRequest.Connection"/>. Use the subclass that
+/// <see cref="CreateVoiceAgentRequest.Connection"/>,
+/// <see cref="UpdateVoiceAgentRequest.Connection"/> and
+/// <see cref="TestVoiceAgentRequest.Connection"/>. Use the subclass that
 /// matches the agent's kind: <see cref="VoiceAgentCustomLlmConnectionInput"/>,
 /// <see cref="VoiceAgentSipConnectionInput"/> or
 /// <see cref="VoiceAgentWebSocketConnectionInput"/>. Properties left unset are
@@ -796,6 +797,158 @@ public class UpdateVoiceAgentRequest
     [JsonPropertyName("rotateSigningSecret")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool RotateSigningSecret { get; set; }
+}
+
+/// <summary>
+/// Settings to test with <see cref="VoiceAgentsResource.TestAsync"/>. Leave it
+/// out to test the saved connection; properties left null are not sent.
+/// </summary>
+public class TestVoiceAgentRequest
+{
+    /// <summary>
+    /// The kind of the settings in <see cref="Connection"/>: <c>custom_llm</c>,
+    /// <c>sip</c> or <c>websocket</c> (see <see cref="VoiceAgentKind"/>).
+    /// Defaults to the agent's own kind. Needed to test settings of another
+    /// kind, such as on a <c>sendly</c> agent before switching it.
+    /// </summary>
+    [JsonPropertyName("kind")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Kind { get; set; }
+
+    /// <summary>
+    /// Settings to test instead of the saved ones. Nothing is saved. For the
+    /// agent's own kind, a secret left out is taken from the saved connection, while the host stays the same.
+    /// </summary>
+    [JsonPropertyName("connection")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public VoiceAgentConnectionInput? Connection { get; set; }
+
+    /// <summary>
+    /// For <c>custom_llm</c>: the system prompt to send, up to 4000
+    /// characters. Defaults to the agent's instructions.
+    /// </summary>
+    [JsonPropertyName("instructions")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Instructions { get; set; }
+}
+
+/// <summary>
+/// What a connection test found. Reported as
+/// <see cref="VoiceAgentTest.Outcome"/>. Values are plain strings so an
+/// outcome added later still deserializes.
+/// </summary>
+public static class VoiceAgentTestOutcome
+{
+    /// <summary>The agent answered the way a call needs.</summary>
+    public const string Ok = "ok";
+
+    /// <summary>The host isn't a public address.</summary>
+    public const string BlockedDestination = "blocked_destination";
+
+    /// <summary>The agent couldn't be reached.</summary>
+    public const string Unreachable = "unreachable";
+
+    /// <summary>The agent didn't answer in time.</summary>
+    public const string Timeout = "timeout";
+
+    /// <summary>The secure connection couldn't be set up.</summary>
+    public const string TlsFailed = "tls_failed";
+
+    /// <summary>The SIP server wants credentials the agent doesn't have.</summary>
+    public const string AuthRequired = "auth_required";
+
+    /// <summary>The key, token or credentials were refused.</summary>
+    public const string AuthFailed = "auth_failed";
+
+    /// <summary>Wrong path or SIP user.</summary>
+    public const string NotFound = "not_found";
+
+    /// <summary>Any other refusal.</summary>
+    public const string Rejected = "rejected";
+
+    /// <summary>An answer outside the protocol.</summary>
+    public const string BadReply = "bad_reply";
+}
+
+/// <summary>
+/// A step of a connection test. Reported as
+/// <see cref="VoiceAgentTestStep.Step"/>. Values are plain strings so a step
+/// added later still deserializes.
+/// </summary>
+public static class VoiceAgentTestStepName
+{
+    /// <summary>The host resolved to a public address.</summary>
+    public const string Address = "address";
+
+    /// <summary>A connection opened.</summary>
+    public const string Connect = "connect";
+
+    /// <summary>The SIP server accepted the credentials.</summary>
+    public const string Login = "login";
+
+    /// <summary>The agent answered as it should.</summary>
+    public const string Reply = "reply";
+}
+
+/// <summary>One step of a connection test.</summary>
+public class VoiceAgentTestStep
+{
+    /// <summary>
+    /// <c>address</c>, <c>connect</c>, <c>login</c> or <c>reply</c>. See
+    /// <see cref="VoiceAgentTestStepName"/>; a value not listed there comes
+    /// through as is.
+    /// </summary>
+    [JsonPropertyName("step")]
+    public string Step { get; set; } = string.Empty;
+
+    /// <summary>Whether this step worked.</summary>
+    [JsonPropertyName("ok")]
+    public bool Ok { get; set; }
+
+    /// <summary>What happened at this step, in plain words.</summary>
+    [JsonPropertyName("detail")]
+    public string Detail { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Response from <see cref="VoiceAgentsResource.TestAsync"/>. A failed test is
+/// still a successful request: check <see cref="Ok"/>.
+/// </summary>
+public class VoiceAgentTest
+{
+    /// <summary>Whether the agent answered the way a call needs.</summary>
+    [JsonPropertyName("ok")]
+    public bool Ok { get; set; }
+
+    /// <summary>
+    /// <c>ok</c>, or why not. See <see cref="VoiceAgentTestOutcome"/>; a value
+    /// not listed there comes through as is.
+    /// </summary>
+    [JsonPropertyName("outcome")]
+    public string Outcome { get; set; } = string.Empty;
+
+    /// <summary>One or two sentences to show a person: what happened and what to change.</summary>
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
+
+    /// <summary>The HTTP or SIP status the agent answered with, or null.</summary>
+    [JsonPropertyName("status")]
+    public int? Status { get; set; }
+
+    /// <summary>How long the agent took to answer, or null.</summary>
+    [JsonPropertyName("latencyMs")]
+    public int? LatencyMs { get; set; }
+
+    /// <summary>
+    /// Whether the request carried <c>X-Sendly-Signature</c>, as calls do.
+    /// Always false for <c>sip</c>.
+    /// </summary>
+    [JsonPropertyName("signed")]
+    public bool Signed { get; set; }
+
+    /// <summary>Each step tried, in order, up to the first that failed.</summary>
+    [JsonPropertyName("steps")]
+    public List<VoiceAgentTestStep> Steps { get; set; } = new();
 }
 
 /// <summary>Response from <see cref="VoiceAgentsResource.ListAsync"/>.</summary>

@@ -1078,6 +1078,152 @@ public class VoiceResourceTests : IDisposable
         Assert.Equal(CallErrorCode.ByoAgentsNotEnabled, exception.ApiErrorCode);
     }
 
+    private const string AgentTestJson = @"{
+        ""ok"": true,
+        ""outcome"": ""ok"",
+        ""message"": ""Your agent's server answered in 84 ms."",
+        ""status"": 200,
+        ""latencyMs"": 84,
+        ""signed"": false,
+        ""steps"": [
+            { ""step"": ""address"", ""ok"": true, ""detail"": ""sip.example.com points to a public server."" },
+            { ""step"": ""connect"", ""ok"": true, ""detail"": ""Connected over TLS to sip.example.com:5061 in 41 ms."" },
+            { ""step"": ""reply"", ""ok"": true, ""detail"": ""SIP 200 OK"" }
+        ]
+    }";
+
+    [Fact]
+    public async Task AgentsTestAsync_WithoutRequest_PostsEmptyBodyWithoutIdempotencyKey()
+    {
+        _mockHandler.QueueSuccessResponse(AgentTestJson);
+
+        var result = await _client.Voice.Agents.TestAsync(AgentId);
+
+        var request = _mockHandler.LastRequest!;
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal($"https://api.test.com/voice/agents/{AgentId}/test", request.RequestUri!.AbsoluteUri);
+        Assert.Null(KeyOfLastRequest());
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal(JsonValueKind.Object, body.ValueKind);
+        Assert.Empty(KeysOf(body));
+
+        Assert.True(result.Ok);
+        Assert.Equal(VoiceAgentTestOutcome.Ok, result.Outcome);
+        Assert.Equal("Your agent's server answered in 84 ms.", result.Message);
+        Assert.Equal(200, result.Status);
+        Assert.Equal(84, result.LatencyMs);
+        Assert.False(result.Signed);
+        Assert.Equal(3, result.Steps.Count);
+        Assert.Equal(VoiceAgentTestStepName.Address, result.Steps[0].Step);
+        Assert.True(result.Steps[0].Ok);
+        Assert.Equal("sip.example.com points to a public server.", result.Steps[0].Detail);
+        Assert.Equal(VoiceAgentTestStepName.Reply, result.Steps[2].Step);
+    }
+
+    [Fact]
+    public async Task AgentsTestAsync_WithSettings_SendsKindConnectionAndInstructions()
+    {
+        _mockHandler.QueueSuccessResponse(AgentTestJson);
+
+        await _client.Voice.Agents.TestAsync(AgentId, new TestVoiceAgentRequest
+        {
+            Kind = VoiceAgentKind.Sip,
+            Connection = new VoiceAgentSipConnectionInput
+            {
+                Uri = "sip:+15125550100@sip.example.com",
+                Transport = SipTransport.Tls,
+            },
+            Instructions = "Answer briefly.",
+        });
+
+        Assert.Null(KeyOfLastRequest());
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal(new List<string> { "connection", "instructions", "kind" }, KeysOf(body));
+        Assert.Equal("sip", body.GetProperty("kind").GetString());
+        Assert.Equal("Answer briefly.", body.GetProperty("instructions").GetString());
+        var connection = body.GetProperty("connection");
+        Assert.Equal(new List<string> { "transport", "uri" }, KeysOf(connection));
+        Assert.Equal("sip:+15125550100@sip.example.com", connection.GetProperty("uri").GetString());
+        Assert.Equal("tls", connection.GetProperty("transport").GetString());
+    }
+
+    [Fact]
+    public async Task AgentsTestAsync_FailedTest_KeepsUnknownOutcomeAndStepAndNullNumbers()
+    {
+        _mockHandler.QueueSuccessResponse(@"{
+            ""ok"": false,
+            ""outcome"": ""future_outcome"",
+            ""message"": ""Your agent's server answered in a way we didn't expect."",
+            ""status"": null,
+            ""latencyMs"": null,
+            ""signed"": true,
+            ""steps"": [
+                { ""step"": ""address"", ""ok"": true, ""detail"": ""agent.example.com points to a public server."" },
+                { ""step"": ""future_step"", ""ok"": false, ""detail"": ""Something new happened."" }
+            ]
+        }");
+
+        var result = await _client.Voice.Agents.TestAsync(AgentId, new TestVoiceAgentRequest());
+
+        var body = await JsonBodyOfLastRequest();
+        Assert.Empty(KeysOf(body));
+        Assert.False(result.Ok);
+        Assert.Equal("future_outcome", result.Outcome);
+        Assert.Null(result.Status);
+        Assert.Null(result.LatencyMs);
+        Assert.True(result.Signed);
+        Assert.Equal("future_step", result.Steps[1].Step);
+        Assert.False(result.Steps[1].Ok);
+    }
+
+    [Fact]
+    public async Task AgentsTestAsync_WithEmptyId_ThrowsValidationExceptionBeforeAnyRequest()
+    {
+        await Assert.ThrowsAsync<ValidationException>(() => _client.Voice.Agents.TestAsync(""));
+        Assert.Null(_mockHandler.LastRequest);
+    }
+
+    [Fact]
+    public async Task AgentsTestAsync_On404_ThrowsNotFoundExceptionWithAgentNotFound()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.NotFound,
+            @"{""error"": ""agent_not_found"", ""message"": ""Agent not found""}");
+
+        var exception = await Assert.ThrowsAsync<NotFoundException>(() => _client.Voice.Agents.TestAsync(AgentId));
+
+        Assert.Equal(CallErrorCode.AgentNotFound, exception.ApiErrorCode);
+    }
+
+    [Fact]
+    public async Task AgentsTestAsync_On429_ThrowsRateLimitException()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.TooManyRequests,
+            @"{""error"": ""rate_limit_exceeded"", ""message"": ""Too many tests. Try again in a minute.""}");
+
+        var exception = await Assert.ThrowsAsync<RateLimitException>(() => _client.Voice.Agents.TestAsync(AgentId));
+
+        Assert.Equal(429, exception.StatusCode);
+    }
+
+    [Fact]
+    public void AgentTestVocabulary_MatchesTheApi()
+    {
+        Assert.Equal("ok", VoiceAgentTestOutcome.Ok);
+        Assert.Equal("blocked_destination", VoiceAgentTestOutcome.BlockedDestination);
+        Assert.Equal("unreachable", VoiceAgentTestOutcome.Unreachable);
+        Assert.Equal("timeout", VoiceAgentTestOutcome.Timeout);
+        Assert.Equal("tls_failed", VoiceAgentTestOutcome.TlsFailed);
+        Assert.Equal("auth_required", VoiceAgentTestOutcome.AuthRequired);
+        Assert.Equal("auth_failed", VoiceAgentTestOutcome.AuthFailed);
+        Assert.Equal("not_found", VoiceAgentTestOutcome.NotFound);
+        Assert.Equal("rejected", VoiceAgentTestOutcome.Rejected);
+        Assert.Equal("bad_reply", VoiceAgentTestOutcome.BadReply);
+        Assert.Equal("address", VoiceAgentTestStepName.Address);
+        Assert.Equal("connect", VoiceAgentTestStepName.Connect);
+        Assert.Equal("login", VoiceAgentTestStepName.Login);
+        Assert.Equal("reply", VoiceAgentTestStepName.Reply);
+    }
+
     [Fact]
     public void ByoVocabulary_MatchesTheApi()
     {

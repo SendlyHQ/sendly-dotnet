@@ -1503,6 +1503,28 @@ bring-your-own-agent feature (`403` `byo_agents_not_enabled` otherwise), and a
 connection that breaks a rule is refused with `400` `invalid_request` naming
 the field (`connection.<field>: <reason>`).
 
+`TestAsync` reaches your agent the way a call would, without placing one, and
+reports what happened. Pass `Connection` (and `Kind`, for settings of another
+kind) to test settings before saving them; nothing is saved. A failed test is
+still a successful request, so check `Ok`. `Outcome` is `ok` or why not
+(`unreachable`, `timeout`, `auth_failed` and so on; see `VoiceAgentTestOutcome`,
+and expect new values), and `Steps` lists each step tried. A workspace can run
+10 tests a minute (`429` `RateLimitException`). No idempotency key is sent.
+
+```csharp
+var result = await client.Voice.Agents.TestAsync(own.Id);
+if (!result.Ok) Console.WriteLine($"{result.Outcome}: {result.Message}");
+foreach (var step in result.Steps)
+    Console.WriteLine($"{(step.Ok ? "ok" : "failed")} {step.Step}: {step.Detail}");
+
+// Try a new SIP address before saving it
+await client.Voice.Agents.TestAsync(own.Id, new TestVoiceAgentRequest
+{
+    Kind = VoiceAgentKind.Sip,
+    Connection = new VoiceAgentSipConnectionInput { Uri = "sip:+15125550100@sip.example.com", Transport = SipTransport.Tls },
+});
+```
+
 Refusals carry `ApiErrorCode` as usual: `400` `ValidationException`
 (`invalid_request`, `invalid_voice_mode`, `agent_required`, `invalid_address`,
 `e911_not_applicable`), `404` `NotFoundException` (`number_not_found`,

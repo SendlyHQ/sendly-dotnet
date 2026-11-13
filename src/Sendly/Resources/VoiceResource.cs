@@ -203,7 +203,7 @@ public class VoiceNumbersResource
 }
 
 /// <summary>
-/// The AI agents that answer and place calls: list, create, update and delete.
+/// The AI agents that answer and place calls: list, create, update, test and delete.
 /// </summary>
 public class VoiceAgentsResource
 {
@@ -310,6 +310,53 @@ public class VoiceAgentsResource
 
         using var doc = await _client.PatchAsync(path, request, options?.IdempotencyKey, cancellationToken);
         return JsonSerializer.Deserialize<VoiceAgent>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
+
+    /// <summary>
+    /// Test your own agent's connection the way a call would reach it, without
+    /// placing one. Requires the <c>calls:write</c> scope and a live API key.
+    ///
+    /// <c>custom_llm</c> gets a signed, streamed chat completion with a test
+    /// message. <c>websocket</c> gets a signed connection with
+    /// <c>connected</c>, a <c>start</c> carrying <c>test: true</c>, half a
+    /// second of silence and a <c>stop</c> with reason <c>test_finished</c>.
+    /// <c>sip</c> gets an <c>OPTIONS</c> request, answered with the saved
+    /// credentials if the server asks; a SIP server answering shows the
+    /// address and credentials work, not which agent picks up.
+    ///
+    /// Pass <c>Connection</c> to test settings before saving them. A workspace
+    /// can run 10 tests a minute. A failed test is still a successful request:
+    /// check <see cref="VoiceAgentTest.Ok"/>. No idempotency key is sent.
+    /// </summary>
+    /// <param name="id">Agent identifier</param>
+    /// <param name="request">Optional settings to test instead of the saved ones</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>What the test found; check <see cref="VoiceAgentTest.Ok"/></returns>
+    /// <exception cref="ValidationException">When <paramref name="id"/> is empty; 400 <c>invalid_request</c> when the agent is a <c>sendly</c> agent and no <c>Kind</c> was sent, or <c>Connection</c> breaks a rule</exception>
+    /// <exception cref="NotFoundException">404 <c>agent_not_found</c> when the agent isn't in this workspace</exception>
+    /// <exception cref="RateLimitException">429 <c>rate_limit_exceeded</c> after 10 tests in a minute</exception>
+    /// <exception cref="SendlyException">403 <c>forbidden</c> / <c>live_key_required</c>, 403 <c>byo_agents_not_enabled</c> when the workspace's bring-your-own-agent feature is off</exception>
+    /// <example>
+    /// <code>
+    /// var result = await client.Voice.Agents.TestAsync("3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b");
+    /// if (!result.Ok) Console.WriteLine($"{result.Outcome}: {result.Message}");
+    ///
+    /// // Try a new address before saving it
+    /// await client.Voice.Agents.TestAsync("3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b", new TestVoiceAgentRequest
+    /// {
+    ///     Connection = new VoiceAgentSipConnectionInput { Uri = "sip:+15125550100@sip.example.com", Transport = SipTransport.Tls },
+    /// });
+    /// </code>
+    /// </example>
+    public async Task<VoiceAgentTest> TestAsync(
+        string id,
+        TestVoiceAgentRequest? request = null,
+        CancellationToken cancellationToken = default)
+    {
+        var path = $"{AgentPath(id)}/test";
+
+        using var doc = await _client.PostAsync(path, request ?? new TestVoiceAgentRequest(), null, autoIdempotencyKey: false, cancellationToken);
+        return JsonSerializer.Deserialize<VoiceAgentTest>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 
     /// <summary>
