@@ -237,13 +237,19 @@ public class VoiceAgentsResource
     /// it has one. A workspace can have up to 20 agents. An idempotency key is
     /// generated automatically; pass <paramref name="options"/> to supply your
     /// own.
+    ///
+    /// To bring your own agent, set <c>Kind</c> to <c>custom_llm</c>,
+    /// <c>sip</c> or <c>websocket</c> and pass the matching
+    /// <c>Connection</c>. The response then carries
+    /// <see cref="VoiceAgent.SigningSecret"/>, which Sendly signs every request
+    /// to your agent with. Save it now; it is never shown again.
     /// </summary>
-    /// <param name="request">The agent's name, voice, greeting, instructions and tools</param>
+    /// <param name="request">The agent's name, voice, greeting, instructions, tools, and for your own agent its kind and connection</param>
     /// <param name="options">Optional idempotency key</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The new agent</returns>
-    /// <exception cref="ValidationException">When <c>Name</c> is empty; 400 <c>invalid_request</c> naming the field the API rejected</exception>
-    /// <exception cref="SendlyException">403 <c>forbidden</c> / <c>live_key_required</c>, 409 <c>agent_limit</c> when the workspace already has 20 agents</exception>
+    /// <returns>The new agent, with its signing secret when it is one of your own</returns>
+    /// <exception cref="ValidationException">When <c>Name</c> is empty; 400 <c>invalid_request</c> naming the field the API rejected, including <c>connection.&lt;field&gt;: &lt;reason&gt;</c> when the connection is missing or breaks a rule</exception>
+    /// <exception cref="SendlyException">403 <c>forbidden</c> / <c>live_key_required</c>, 403 <c>byo_agents_not_enabled</c> when <c>Kind</c> is one of your own and the workspace's bring-your-own-agent feature is off, 409 <c>agent_limit</c> when the workspace already has 20 agents</exception>
     public async Task<VoiceAgent> CreateAsync(
         CreateVoiceAgentRequest request,
         IdempotentRequestOptions? options = null,
@@ -277,17 +283,21 @@ public class VoiceAgentsResource
     /// key.
     ///
     /// Only the properties you set are sent; tools you leave null keep their
-    /// current values. Changes apply to the next call the agent takes. No
-    /// idempotency key is sent unless you pass <paramref name="options"/>.
+    /// current values, and a connection with the same kind is merged into the
+    /// saved one. Changes apply to the next call the agent takes. Switching a
+    /// <c>sendly</c> agent to one of your own, or setting
+    /// <c>RotateSigningSecret</c>, makes a signing secret that the response
+    /// carries once on <see cref="VoiceAgent.SigningSecret"/>. No idempotency
+    /// key is sent unless you pass <paramref name="options"/>.
     /// </summary>
     /// <param name="id">Agent identifier</param>
-    /// <param name="request">Any subset of the create fields</param>
+    /// <param name="request">Any subset of the create fields, and optionally <c>RotateSigningSecret</c></param>
     /// <param name="options">Optional idempotency key</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The agent after the change</returns>
-    /// <exception cref="ValidationException">When <paramref name="id"/> is empty or <paramref name="request"/> is null; 400 <c>invalid_request</c> naming the field the API rejected</exception>
+    /// <returns>The agent after the change, with its signing secret when one was just made</returns>
+    /// <exception cref="ValidationException">When <paramref name="id"/> is empty or <paramref name="request"/> is null; 400 <c>invalid_request</c> naming the field the API rejected, including <c>connection.&lt;field&gt;: &lt;reason&gt;</c>, a connection missing when the kind changes, or <c>RotateSigningSecret</c> on a <c>sendly</c> agent</exception>
     /// <exception cref="NotFoundException">404 <c>agent_not_found</c> when the agent isn't in this workspace</exception>
-    /// <exception cref="SendlyException">403 <c>forbidden</c> / <c>live_key_required</c></exception>
+    /// <exception cref="SendlyException">403 <c>forbidden</c> / <c>live_key_required</c>, 403 <c>byo_agents_not_enabled</c> when the request sets one of your own kinds, a connection or <c>RotateSigningSecret</c> and the workspace's bring-your-own-agent feature is off</exception>
     public async Task<VoiceAgent> UpdateAsync(
         string id,
         UpdateVoiceAgentRequest request,

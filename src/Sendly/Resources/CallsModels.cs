@@ -196,7 +196,7 @@ public static class CallHangupClass
     /// <summary>Cut short because the agent left.</summary>
     public const string AgentLeft = "agent_left";
 
-    /// <summary>The agent connected the caller to its transfer number.</summary>
+    /// <summary>The caller was handed over to another number: the agent's transfer number, or the one given to <see cref="CallsResource.TransferAsync"/>.</summary>
     public const string Transferred = "transferred";
 
     /// <summary>An outbound agent call reached voicemail and the agent left a message.</summary>
@@ -216,6 +216,12 @@ public static class CallHangupClass
 
     /// <summary>The agent found the call already over.</summary>
     public const string AgentAlreadyEnded = "agent_already_ended";
+
+    /// <summary>Your own agent ended the call.</summary>
+    public const string AgentRemoteHangup = "agent_remote_hangup";
+
+    /// <summary>Your own agent couldn't be reached and nobody else could take the call.</summary>
+    public const string AgentByoFailed = "agent_byo_failed";
 
     /// <summary>Ended for a reason the API does not classify.</summary>
     public const string Ended = "ended";
@@ -296,6 +302,31 @@ public static class CallErrorCode
     /// <summary>409: the workspace already has the maximum of 20 agents.</summary>
     public const string AgentLimit = "agent_limit";
 
+    /// <summary>
+    /// 403: an agent kind other than <c>sendly</c>, a connection or
+    /// <c>RotateSigningSecret</c> was sent and the workspace's
+    /// bring-your-own-agent feature is off. Support switches it on.
+    /// </summary>
+    public const string ByoAgentsNotEnabled = "byo_agents_not_enabled";
+
+    /// <summary>409: the agent's kind is <c>sip</c> or <c>websocket</c>, which answer incoming calls only.</summary>
+    public const string AgentKindUnsupported = "agent_kind_unsupported";
+
+    /// <summary>400: no <c>To</c> was given to <see cref="CallsResource.TransferAsync"/> and the agent has no transfer number.</summary>
+    public const string TransferToRequired = "transfer_to_required";
+
+    /// <summary>403: the transfer number is not the agent's transfer number and calling out is not switched on for the workspace.</summary>
+    public const string OutboundNotEnabled = "outbound_not_enabled";
+
+    /// <summary>409: the call is not in progress.</summary>
+    public const string CallNotActive = "call_not_active";
+
+    /// <summary>409: only incoming phone calls can be transferred.</summary>
+    public const string CallNotTransferable = "call_not_transferable";
+
+    /// <summary>409: a transfer is already under way, or the call has had 3 transfer attempts.</summary>
+    public const string TransferInProgress = "transfer_in_progress";
+
     /// <summary>400: <c>VoiceMode</c> is not <c>none</c>, <c>ring_dashboard</c> or <c>agent</c>.</summary>
     public const string InvalidVoiceMode = "invalid_voice_mode";
 
@@ -328,6 +359,80 @@ public static class CallErrorCode
     /// after <c>RetryAfter</c> (1 second).
     /// </summary>
     public const string TooManyConcurrentVerifications = "too_many_concurrent_verifications";
+}
+
+/// <summary>
+/// Where a call's transfer is. Reported as <see cref="CallTransfer.Status"/>.
+/// Values are plain strings so a status added later still deserializes.
+/// </summary>
+public static class CallTransferStatus
+{
+    /// <summary>The transfer number is ringing.</summary>
+    public const string Pending = "pending";
+
+    /// <summary>The caller was handed over.</summary>
+    public const string Completed = "completed";
+
+    /// <summary>The transfer did not go through; the caller is still on the call.</summary>
+    public const string Failed = "failed";
+}
+
+/// <summary>
+/// Why a transfer failed. Reported as <see cref="CallTransfer.FailureReason"/>.
+/// Values are plain strings so a reason added later still deserializes.
+/// </summary>
+public static class CallTransferFailureReason
+{
+    /// <summary>The transfer number was busy.</summary>
+    public const string Busy = "busy";
+
+    /// <summary>Nobody answered the transfer number.</summary>
+    public const string NoAnswer = "no_answer";
+
+    /// <summary>The transfer number declined the call.</summary>
+    public const string Declined = "declined";
+
+    /// <summary>The transfer number could not be reached.</summary>
+    public const string Unavailable = "unavailable";
+
+    /// <summary>No definite answer came back.</summary>
+    public const string Unknown = "unknown";
+}
+
+/// <summary>The latest transfer on a call. Reported as <see cref="Call.Transfer"/>.</summary>
+public class CallTransfer
+{
+    /// <summary>The number the caller is transferred to, in E.164 format.</summary>
+    [JsonPropertyName("to")]
+    public string To { get; set; } = string.Empty;
+
+    /// <summary><c>pending</c>, <c>completed</c> or <c>failed</c>. See <see cref="CallTransferStatus"/>.</summary>
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Why the transfer failed, or null unless <see cref="Status"/> is
+    /// <c>failed</c>. See <see cref="CallTransferFailureReason"/>.
+    /// </summary>
+    [JsonPropertyName("failureReason")]
+    public string? FailureReason { get; set; }
+}
+
+/// <summary>
+/// Request for <see cref="CallsResource.TransferAsync"/>.
+/// </summary>
+public class TransferCallRequest
+{
+    /// <summary>
+    /// The number to transfer the caller to, in E.164 format: US or
+    /// Canadian, not premium-rate, not the number the caller dialled and not a
+    /// number the agent answers. Left null, it is not sent and the agent's
+    /// transfer number (<see cref="VoiceAgentTools.TransferTo"/>) is used. Any
+    /// other number needs calling out switched on for the workspace.
+    /// </summary>
+    [JsonPropertyName("to")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? To { get; set; }
 }
 
 /// <summary>
@@ -414,6 +519,26 @@ public class Call
     /// <summary>Why the call ended, or null while live. See <see cref="CallHangupClass"/>.</summary>
     [JsonPropertyName("hangupClass")]
     public string? HangupClass { get; set; }
+
+    /// <summary>
+    /// Which kind of agent answered: <c>sendly</c>, or one of your own
+    /// (<c>custom_llm</c>, <c>sip</c>, <c>websocket</c>). Null when no agent
+    /// handled the call. See <see cref="VoiceAgentKind"/>; a value not listed
+    /// there comes through unchanged.
+    /// </summary>
+    [JsonPropertyName("agentKind")]
+    public string? AgentKind { get; set; }
+
+    /// <summary>
+    /// True when your own agent could not be reached (or dropped), so Sendly
+    /// said a short line and transferred the caller or took a message.
+    /// </summary>
+    [JsonPropertyName("agentFallback")]
+    public bool AgentFallback { get; set; }
+
+    /// <summary>The latest transfer on the call, or null when it was never transferred.</summary>
+    [JsonPropertyName("transfer")]
+    public CallTransfer? Transfer { get; set; }
 
     /// <summary><c>recording</c>, <c>ready</c>, <c>failed</c>, or null when there is no recording. See <see cref="CallRecordingStatus"/>.</summary>
     [JsonPropertyName("recordingStatus")]
@@ -511,6 +636,13 @@ public class ListCallsOptions
     /// <summary>Only calls handled by this agent.</summary>
     public string? AgentId { get; set; }
 
+    /// <summary>
+    /// Only calls answered by this kind of agent. See
+    /// <see cref="VoiceAgentKind"/>. Calls from before agent kinds existed
+    /// count as <c>sendly</c>.
+    /// </summary>
+    public string? AgentKind { get; set; }
+
     /// <summary>Only calls to this number (E.164, exact match).</summary>
     public string? To { get; set; }
 
@@ -532,6 +664,8 @@ public class ListCallsOptions
             queryParams["kind"] = Kind;
         if (!string.IsNullOrEmpty(AgentId))
             queryParams["agentId"] = AgentId;
+        if (!string.IsNullOrEmpty(AgentKind))
+            queryParams["agentKind"] = AgentKind;
         if (!string.IsNullOrEmpty(To))
             queryParams["to"] = To;
         if (!string.IsNullOrEmpty(From))

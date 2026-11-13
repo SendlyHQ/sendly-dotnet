@@ -346,6 +346,7 @@ public class CallsResourceTests : IDisposable
             Direction = CallDirection.Outbound,
             Kind = CallKind.Pstn,
             AgentId = AgentId,
+            AgentKind = VoiceAgentKind.CustomLlm,
             To = "+15555550123",
             From = "+15555550188",
         });
@@ -357,6 +358,7 @@ public class CallsResourceTests : IDisposable
         Assert.Contains("direction=outbound", query);
         Assert.Contains("kind=pstn", query);
         Assert.Contains($"agentId={AgentId}", query);
+        Assert.Contains("agentKind=custom_llm", query);
         Assert.Contains("to=%2B15555550123", query);
         Assert.Contains("from=%2B15555550188", query);
         Assert.DoesNotContain("agent_id", query);
@@ -447,6 +449,8 @@ public class CallsResourceTests : IDisposable
     [InlineData("transferred", CallHangupClass.Transferred)]
     [InlineData("voicemail", CallHangupClass.Voicemail)]
     [InlineData("voicemail_unavailable", CallHangupClass.VoicemailUnavailable)]
+    [InlineData("agent_remote_hangup", CallHangupClass.AgentRemoteHangup)]
+    [InlineData("agent_byo_failed", CallHangupClass.AgentByoFailed)]
     public async Task GetAsync_ReadsTheAgentOutcomeHangupClasses(string wire, string expected)
     {
         _mockHandler.QueueSuccessResponse(
@@ -538,6 +542,158 @@ public class CallsResourceTests : IDisposable
         var exception = await Assert.ThrowsAsync<NotFoundException>(() => _client.Calls.HangupAsync(CallId));
 
         Assert.Equal(CallErrorCode.CallNotFound, exception.ApiErrorCode);
+    }
+
+    #endregion
+
+    #region TransferAsync Tests
+
+    private const string TransferringCallJson = @"{
+        ""id"": ""6f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f"",
+        ""object"": ""call"",
+        ""kind"": ""pstn"",
+        ""channel"": ""phone"",
+        ""direction"": ""inbound"",
+        ""status"": ""active"",
+        ""handledBy"": ""agent"",
+        ""agentId"": ""3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b"",
+        ""from"": ""+15555550101"",
+        ""to"": ""+15555550100"",
+        ""callerName"": ""+15555550101"",
+        ""calleeName"": ""Front Desk"",
+        ""startedAt"": ""2026-11-13T10:00:00.000Z"",
+        ""answeredAt"": ""2026-11-13T10:00:05.000Z"",
+        ""endedAt"": null,
+        ""durationSecs"": 0,
+        ""creditsCharged"": 10,
+        ""billing"": ""metered"",
+        ""hangupClass"": null,
+        ""agentKind"": ""websocket"",
+        ""agentFallback"": false,
+        ""transfer"": { ""to"": ""+15555550102"", ""status"": ""pending"", ""failureReason"": null },
+        ""recordingStatus"": null,
+        ""metadata"": {}
+    }";
+
+    [Fact]
+    public async Task TransferAsync_WithTo_PostsItWithAutoIdempotencyKey()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Accepted, TransferringCallJson);
+
+        var call = await _client.Calls.TransferAsync(CallId, new TransferCallRequest { To = "+15555550102" });
+
+        var request = _mockHandler.LastRequest!;
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal($"https://api.test.com/calls/{CallId}/transfer", request.RequestUri!.ToString());
+        Assert.Matches(AutoKeyPattern, KeyOfLastRequest());
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal(new List<string> { "to" }, body.EnumerateObject().Select(p => p.Name).ToList());
+        Assert.Equal("+15555550102", body.GetProperty("to").GetString());
+
+        Assert.Equal(CallStatus.Active, call.Status);
+        Assert.Equal(VoiceAgentKind.WebSocket, call.AgentKind);
+        Assert.False(call.AgentFallback);
+        Assert.NotNull(call.Transfer);
+        Assert.Equal("+15555550102", call.Transfer!.To);
+        Assert.Equal(CallTransferStatus.Pending, call.Transfer.Status);
+        Assert.Null(call.Transfer.FailureReason);
+    }
+
+    [Fact]
+    public async Task TransferAsync_WithoutTo_PostsEmptyObject()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Accepted, TransferringCallJson);
+
+        await _client.Calls.TransferAsync(CallId);
+
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal(JsonValueKind.Object, body.ValueKind);
+        Assert.Empty(body.EnumerateObject());
+
+        _mockHandler.QueueResponse(HttpStatusCode.Accepted, TransferringCallJson);
+
+        await _client.Calls.TransferAsync(CallId, new TransferCallRequest(),
+            new IdempotentRequestOptions { IdempotencyKey = "transfer-once" });
+
+        Assert.Empty((await JsonBodyOfLastRequest()).EnumerateObject());
+        Assert.Equal("transfer-once", KeyOfLastRequest());
+    }
+
+    [Fact]
+    public async Task TransferAsync_PercentEncodesTheId()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Accepted, TransferringCallJson);
+
+        await _client.Calls.TransferAsync("call/with space");
+
+        Assert.EndsWith("calls/call%2Fwith%20space/transfer", _mockHandler.LastRequest!.RequestUri!.AbsoluteUri);
+    }
+
+    [Fact]
+    public async Task TransferAsync_WithEmptyId_ThrowsValidationException()
+    {
+        await Assert.ThrowsAsync<ValidationException>(() => _client.Calls.TransferAsync(""));
+        Assert.Empty(_mockHandler.Requests);
+    }
+
+    [Fact]
+    public async Task TransferAsync_On402_ThrowsInsufficientCreditsException()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.PaymentRequired,
+            @"{""error"": ""insufficient_credits"", ""message"": ""Transfers need credits on the workspace. Current balance: 0."", ""creditsNeeded"": 1, ""currentBalance"": 0}");
+
+        var exception = await Assert.ThrowsAsync<InsufficientCreditsException>(() => _client.Calls.TransferAsync(CallId));
+
+        Assert.Equal("insufficient_credits", exception.ApiErrorCode);
+    }
+
+    [Fact]
+    public async Task TransferAsync_On409TransferInProgress_ThrowsSendlyExceptionWithCode()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Conflict,
+            @"{""error"": ""transfer_in_progress"", ""message"": ""A transfer is already under way.""}");
+
+        var exception = await Assert.ThrowsAsync<SendlyException>(() => _client.Calls.TransferAsync(CallId));
+
+        Assert.Equal(409, exception.StatusCode);
+        Assert.Equal(CallErrorCode.TransferInProgress, exception.ApiErrorCode);
+    }
+
+    [Fact]
+    public async Task TransferAsync_On400TransferToRequired_ThrowsValidationExceptionWithCode()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.BadRequest,
+            @"{""error"": ""transfer_to_required"", ""message"": ""This agent has no transfer number.""}");
+
+        var exception = await Assert.ThrowsAsync<ValidationException>(() => _client.Calls.TransferAsync(CallId));
+
+        Assert.Equal(CallErrorCode.TransferToRequired, exception.ApiErrorCode);
+    }
+
+    [Fact]
+    public async Task GetAsync_ReadsAFailedTransferAndAgentFallback()
+    {
+        _mockHandler.QueueSuccessResponse(TransferringCallJson
+            .Replace(@"""agentFallback"": false", @"""agentFallback"": true")
+            .Replace(@"""status"": ""pending"", ""failureReason"": null", @"""status"": ""failed"", ""failureReason"": ""no_answer"""));
+
+        var call = await _client.Calls.GetAsync(CallId);
+
+        Assert.True(call.AgentFallback);
+        Assert.Equal(CallTransferStatus.Failed, call.Transfer!.Status);
+        Assert.Equal(CallTransferFailureReason.NoAnswer, call.Transfer.FailureReason);
+    }
+
+    [Fact]
+    public async Task GetAsync_WithoutAgentKindOrTransfer_LeavesThemNull()
+    {
+        _mockHandler.QueueSuccessResponse(InboundDashboardCallJson);
+
+        var call = await _client.Calls.GetAsync("0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d");
+
+        Assert.Null(call.AgentKind);
+        Assert.Null(call.Transfer);
+        Assert.False(call.AgentFallback);
     }
 
     #endregion
@@ -640,6 +796,25 @@ public class CallsResourceTests : IDisposable
         Assert.Equal("call_not_found", CallErrorCode.CallNotFound);
         Assert.Equal("live_key_required", CallErrorCode.LiveKeyRequired);
         Assert.Equal("voice_internal_error", CallErrorCode.VoiceInternalError);
+        Assert.Equal("agent_kind_unsupported", CallErrorCode.AgentKindUnsupported);
+        Assert.Equal("transfer_to_required", CallErrorCode.TransferToRequired);
+        Assert.Equal("outbound_not_enabled", CallErrorCode.OutboundNotEnabled);
+        Assert.Equal("call_not_active", CallErrorCode.CallNotActive);
+        Assert.Equal("call_not_transferable", CallErrorCode.CallNotTransferable);
+        Assert.Equal("transfer_in_progress", CallErrorCode.TransferInProgress);
+    }
+
+    [Fact]
+    public void TransferVocabulary_MatchesTheApi()
+    {
+        Assert.Equal("pending", CallTransferStatus.Pending);
+        Assert.Equal("completed", CallTransferStatus.Completed);
+        Assert.Equal("failed", CallTransferStatus.Failed);
+        Assert.Equal("busy", CallTransferFailureReason.Busy);
+        Assert.Equal("no_answer", CallTransferFailureReason.NoAnswer);
+        Assert.Equal("declined", CallTransferFailureReason.Declined);
+        Assert.Equal("unavailable", CallTransferFailureReason.Unavailable);
+        Assert.Equal("unknown", CallTransferFailureReason.Unknown);
     }
 
     #endregion

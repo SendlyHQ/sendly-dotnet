@@ -6,7 +6,7 @@ namespace Sendly.Resources;
 
 /// <summary>
 /// Calls Resource: place phone calls handled by your AI agents, list and
-/// inspect calls, end a call, and download recordings.
+/// inspect calls, end or transfer a call, and download recordings.
 ///
 /// A workspace phone number with voice enabled can take and place phone
 /// calls. Over the API a call is always handled by one of your AI agents (a
@@ -75,7 +75,7 @@ public class CallsResource
     /// <exception cref="NotFoundException">404 <c>voice_not_enabled</c>, <c>outbound_calls_not_enabled</c>, <c>agent_not_found</c> or <c>number_not_found</c></exception>
     /// <exception cref="InsufficientCreditsException">402 <c>insufficient_credits</c> when the balance cannot cover one minute</exception>
     /// <exception cref="RateLimitException">429 <c>daily_call_limit</c> or <c>rate_limit_exceeded</c></exception>
-    /// <exception cref="SendlyException">403 <c>live_key_required</c>, 409 <c>agent_disabled</c> / <c>no_voice_number</c> / <c>lines_busy</c>, 428 <c>e911_required</c>, 503 <c>voice_unavailable</c> (see <see cref="SendlyException.ApiErrorCode"/>)</exception>
+    /// <exception cref="SendlyException">403 <c>live_key_required</c>, 409 <c>agent_disabled</c> / <c>no_voice_number</c> / <c>lines_busy</c> / <c>agent_kind_unsupported</c> (a <c>sip</c> or <c>websocket</c> agent, which answers incoming calls only; <c>custom_llm</c> agents can place calls), 428 <c>e911_required</c>, 503 <c>voice_unavailable</c> (see <see cref="SendlyException.ApiErrorCode"/>)</exception>
     public async Task<Call> CreateAsync(
         CreateCallRequest request,
         IdempotentRequestOptions? options = null,
@@ -97,7 +97,7 @@ public class CallsResource
     /// Live calls are brought up to date before they are returned, so a ring
     /// past its deadline shows as <c>no_answer</c>.
     /// </summary>
-    /// <param name="options">Filters (status, direction, kind, agent, to, from) and pagination (limit 1-100, offset)</param>
+    /// <param name="options">Filters (status, direction, kind, agent, agent kind, to, from) and pagination (limit 1-100, offset)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The calls on this page and where the page sits in the full list</returns>
     /// <exception cref="ValidationException">400 <c>invalid_request</c> when a filter value is not one the API accepts</exception>
@@ -154,6 +154,44 @@ public class CallsResource
             throw new ValidationException("Call ID is required");
 
         using var doc = await _client.PostAsync($"/calls/{Uri.EscapeDataString(id)}/hangup", new { }, options?.IdempotencyKey, true, cancellationToken);
+        return JsonSerializer.Deserialize<Call>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
+    }
+
+    /// <summary>
+    /// Transfer the caller on an incoming phone call to another number.
+    /// Requires the <c>calls:write</c> scope and a live API key.
+    ///
+    /// Works whatever kind of agent is on the call. With no <c>To</c>, the
+    /// caller goes to the agent's transfer number
+    /// (<see cref="VoiceAgentTools.TransferTo"/>); any other US or Canadian
+    /// number needs calling out switched on for the workspace. The workspace
+    /// needs credits left. The API answers 202 at once with
+    /// <see cref="Call.Transfer"/> <c>pending</c>; follow the outcome with
+    /// <see cref="GetAsync"/> (<c>Transfer.Status</c>). Once the caller is
+    /// handed over the call ends <c>completed</c> with <c>HangupClass</c>
+    /// <c>transferred</c>; a failed transfer leaves the caller on the call. An
+    /// idempotency key is generated automatically; pass
+    /// <paramref name="options"/> to supply your own.
+    /// </summary>
+    /// <param name="id">Call identifier</param>
+    /// <param name="request">Where to transfer the caller; null or a null <c>To</c> sends an empty body and uses the agent's transfer number</param>
+    /// <param name="options">Optional idempotency key</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The call, with <see cref="Call.Transfer"/> <c>pending</c></returns>
+    /// <exception cref="ValidationException">When <paramref name="id"/> is empty; 400 <c>invalid_request</c> when <c>To</c> is malformed, outside the US and Canada, premium-rate, the number the caller dialled or a number the agent answers; 400 <c>transfer_to_required</c> when no <c>To</c> is given and the agent has no transfer number</exception>
+    /// <exception cref="InsufficientCreditsException">402 <c>insufficient_credits</c> when the workspace has no credits left</exception>
+    /// <exception cref="NotFoundException">404 <c>call_not_found</c> when the call isn't in this workspace</exception>
+    /// <exception cref="SendlyException">403 <c>live_key_required</c> / <c>outbound_not_enabled</c> (<c>To</c> is not the agent's transfer number and calling out is not switched on), 409 <c>call_not_active</c> / <c>call_not_transferable</c> (not an incoming phone call) / <c>transfer_in_progress</c> (a transfer is under way, or the call has had 3 transfer attempts), 500 <c>voice_internal_error</c> (see <see cref="SendlyException.ApiErrorCode"/>)</exception>
+    public async Task<Call> TransferAsync(
+        string id,
+        TransferCallRequest? request = null,
+        IdempotentRequestOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(id))
+            throw new ValidationException("Call ID is required");
+
+        using var doc = await _client.PostAsync($"/calls/{Uri.EscapeDataString(id)}/transfer", request ?? new TransferCallRequest(), options?.IdempotencyKey, true, cancellationToken);
         return JsonSerializer.Deserialize<Call>(doc.RootElement.GetRawText(), _client.JsonOptions)!;
     }
 

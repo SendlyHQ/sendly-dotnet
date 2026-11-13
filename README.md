@@ -1275,7 +1275,7 @@ await client.Messages.SendAsync(new SendRcsMessageRequest(
 
 Place phone calls handled by your AI agents (the receptionists you create with
 `client.Voice.Agents` or in the dashboard under Calls → Agents), list and
-inspect calls, end a call, and download recordings. Over the API a call is
+inspect calls, end or transfer a call, and download recordings. Over the API a call is
 always answered by one of your agents; the agent speaks first and follows any
 `Context` you attach. Reads need an API key with the `calls:read` scope, writes
 `calls:write` and a live key.
@@ -1327,6 +1327,10 @@ foreach (var line in call.Transcript ?? new())
 // End a call early (ringing -> cancelled, active -> completed)
 call = await client.Calls.HangupAsync(call.Id);
 
+// Transfer the caller on an incoming call (no To: the agent's transfer number)
+call = await client.Calls.TransferAsync(call.Id, new TransferCallRequest { To = "+15125550188" });
+Console.WriteLine(call.Transfer!.Status); // "pending", then "completed" or "failed"
+
 // Download the recording (signed URL, valid for five minutes)
 var recording = await client.Calls.RecordingAsync(call.Id);
 if (recording.Status == CallRecordingStatus.Ready)
@@ -1357,6 +1361,20 @@ including `billing`, `channel` and your `metadata`. `Channel` is `phone`,
 `whatsapp` or `browser` (constants on `CallChannel`; any other value comes
 through unchanged). An inbound WhatsApp call can read `phone` until WhatsApp
 calls are labelled on the inbound line.
+
+`TransferAsync` works on incoming phone calls whatever kind of agent is on the
+call, and answers at once with `Transfer.Status` `pending`; follow it with
+`GetAsync`. Once the caller is handed over the call ends `completed` with
+`HangupClass` `transferred`; a `failed` transfer (`Transfer.FailureReason`)
+leaves the caller on the call. A number other than the agent's transfer number
+needs calling out switched on (`403` `outbound_not_enabled`). It can also
+refuse with `400` `transfer_to_required`, `402` `insufficient_credits` and
+`409` `call_not_active`, `call_not_transferable` or `transfer_in_progress`.
+`Call.AgentKind` says which kind of agent answered, `Call.AgentFallback` is true
+when your own agent couldn't be reached and Sendly stepped in, and
+`ListCallsOptions.AgentKind` filters by it. `CreateAsync` refuses a `sip` or
+`websocket` agent with `409` `agent_kind_unsupported`: those answer incoming
+calls only.
 
 ### Configure voice
 
@@ -1436,10 +1454,54 @@ switches voice on, so it can fail the way switching on does (`503`
 switches it off. `VoiceEnabled = false` wins over any mode, and
 `VoiceMode.None` with `VoiceEnabled = true` becomes `ring_dashboard`. An empty
 `AgentId` clears the stored agent, and an empty `TransferTo` clears that tool.
-A workspace can hold up to 20 agents (`409` `agent_limit`). Agents cannot
-transfer calls yet: while `TransferTo` is set, a caller who asks for a person
-is told the message will be passed on, and the agent takes their name and
-number.
+A workspace can hold up to 20 agents (`409` `agent_limit`). `TransferTo` is
+where the agent sends a caller who asks for a person, and where
+`client.Calls.TransferAsync` sends one when no number is given.
+
+#### Bring your own agent
+
+Set `Kind` to answer calls with your own agent instead of Sendly's:
+`VoiceAgentKind.CustomLlm` (Sendly listens and speaks, your chat completions
+endpoint writes each reply), `VoiceAgentKind.Sip` (Sendly connects the caller to
+your SIP address) or `VoiceAgentKind.WebSocket` (Sendly streams the call audio
+to your `wss://` server). Pass the matching connection. The response carries
+`SigningSecret` once: Sendly signs every request to your agent with it
+(`X-Sendly-Signature: t=<unix>,v1=<hex HMAC-SHA256>`). Save it now; it is never
+shown again.
+
+```csharp
+var own = await client.Voice.Agents.CreateAsync(new CreateVoiceAgentRequest
+{
+    Name = "Front desk",
+    Kind = VoiceAgentKind.CustomLlm,
+    Connection = new VoiceAgentCustomLlmConnectionInput
+    {
+        BaseUrl = "https://llm.example.com/v1",
+        Model = "acme-receptionist",
+        ApiKey = "sk_example",
+    },
+});
+Console.WriteLine(own.SigningSecret);
+
+// Change the model and keep the saved key; null would remove it
+await client.Voice.Agents.UpdateAsync(own.Id, new UpdateVoiceAgentRequest
+{
+    Connection = new VoiceAgentCustomLlmConnectionInput { Model = "acme-receptionist-2" },
+});
+
+// Make a new signing secret; the old one stops working at once
+own = await client.Voice.Agents.UpdateAsync(own.Id, new UpdateVoiceAgentRequest { RotateSigningSecret = true });
+```
+
+Reads return `Kind`, `Connection` (null for a `sendly` agent; secrets are never
+returned, only `HasApiKey`, `HasPassword` and `HasAuthToken`) and
+`HasSigningSecret`. In a connection input, a secret left unset keeps the saved
+value and one set to null removes it; with the same kind the connection is
+merged into the saved one. Switching `Kind` back to `sendly` removes the
+connection and the signing secret. Your own agents need the workspace's
+bring-your-own-agent feature (`403` `byo_agents_not_enabled` otherwise), and a
+connection that breaks a rule is refused with `400` `invalid_request` naming
+the field (`connection.<field>: <reason>`).
 
 Refusals carry `ApiErrorCode` as usual: `400` `ValidationException`
 (`invalid_request`, `invalid_voice_mode`, `agent_required`, `invalid_address`,

@@ -800,6 +800,307 @@ public class VoiceResourceTests : IDisposable
 
     #endregion
 
+    #region Bring Your Own Agent Tests
+
+    private const string WebSocketAgentJson = @"{
+        ""id"": ""3c4d5e6f-7081-4293-a4b5-c6d7e8f90a1b"",
+        ""object"": ""voice_agent"",
+        ""name"": ""Front desk"",
+        ""enabled"": true,
+        ""kind"": ""websocket"",
+        ""connection"": {
+            ""url"": ""wss://agent.example.com/calls"",
+            ""audioFormat"": ""pcm16_24000"",
+            ""hasAuthToken"": true,
+            ""customParameters"": { ""tenant"": ""acme"" }
+        },
+        ""hasSigningSecret"": true,
+        ""signingSecret"": ""whsec_byo_once"",
+        ""voice"": ""ashley"",
+        ""voiceLabel"": ""Ashley (US, warm)"",
+        ""language"": ""en-US"",
+        ""greeting"": """",
+        ""instructions"": """",
+        ""tools"": { ""sendSms"": true, ""transferTo"": null },
+        ""canSendSms"": true,
+        ""callsHandled"": 0,
+        ""avgDurationSecs"": 0,
+        ""createdAt"": ""2026-11-13T10:00:00.000Z"",
+        ""updatedAt"": ""2026-11-13T10:00:00.000Z""
+    }";
+
+    [Fact]
+    public async Task AgentsCreateAsync_WithCustomLlmKind_SendsKindAndConnectionAsGiven()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Created, WebSocketAgentJson);
+
+        await _client.Voice.Agents.CreateAsync(new CreateVoiceAgentRequest
+        {
+            Name = "Front desk",
+            Kind = VoiceAgentKind.CustomLlm,
+            Connection = new VoiceAgentCustomLlmConnectionInput
+            {
+                BaseUrl = "https://llm.example.com/v1",
+                Model = "acme-receptionist",
+                ApiKey = "sk_example",
+                Headers = new Dictionary<string, string> { ["X-Tenant"] = "acme" },
+            },
+        });
+
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal(new List<string> { "connection", "kind", "name" }, KeysOf(body));
+        Assert.Equal("custom_llm", body.GetProperty("kind").GetString());
+        var connection = body.GetProperty("connection");
+        Assert.Equal(new List<string> { "apiKey", "baseUrl", "headers", "model" }, KeysOf(connection));
+        Assert.Equal("https://llm.example.com/v1", connection.GetProperty("baseUrl").GetString());
+        Assert.Equal("acme-receptionist", connection.GetProperty("model").GetString());
+        Assert.Equal("sk_example", connection.GetProperty("apiKey").GetString());
+        Assert.Equal("acme", connection.GetProperty("headers").GetProperty("X-Tenant").GetString());
+        Assert.Matches(AutoKeyPattern, KeyOfLastRequest());
+    }
+
+    [Fact]
+    public async Task AgentsCreateAsync_WithSipKind_SendsOnlyTheConnectionFieldsThatAreSet()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Created, WebSocketAgentJson);
+
+        await _client.Voice.Agents.CreateAsync(new CreateVoiceAgentRequest
+        {
+            Name = "Front desk",
+            Kind = VoiceAgentKind.Sip,
+            Connection = new VoiceAgentSipConnectionInput
+            {
+                Uri = "sip:+15555550100@sip.example.com",
+                Transport = SipTransport.Tls,
+                MediaEncryption = SipMediaEncryption.Require,
+                Username = "acme",
+                Password = "secret",
+                Headers = new Dictionary<string, string> { ["X-Account"] = "42" },
+            },
+        });
+
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal("sip", body.GetProperty("kind").GetString());
+        var connection = body.GetProperty("connection");
+        Assert.Equal(new List<string> { "headers", "mediaEncryption", "password", "transport", "uri", "username" }, KeysOf(connection));
+        Assert.Equal("sip:+15555550100@sip.example.com", connection.GetProperty("uri").GetString());
+        Assert.Equal("tls", connection.GetProperty("transport").GetString());
+        Assert.Equal("require", connection.GetProperty("mediaEncryption").GetString());
+        Assert.Equal("acme", connection.GetProperty("username").GetString());
+        Assert.Equal("secret", connection.GetProperty("password").GetString());
+        Assert.Equal("42", connection.GetProperty("headers").GetProperty("X-Account").GetString());
+    }
+
+    [Fact]
+    public async Task AgentsCreateAsync_ReturnsTheOneTimeSigningSecretAndConnection()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Created, WebSocketAgentJson);
+
+        var agent = await _client.Voice.Agents.CreateAsync(new CreateVoiceAgentRequest
+        {
+            Name = "Front desk",
+            Kind = VoiceAgentKind.WebSocket,
+            Connection = new VoiceAgentWebSocketConnectionInput { Url = "wss://agent.example.com/calls" },
+        });
+
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal("websocket", body.GetProperty("kind").GetString());
+        Assert.Equal(new List<string> { "url" }, KeysOf(body.GetProperty("connection")));
+
+        Assert.Equal(VoiceAgentKind.WebSocket, agent.Kind);
+        Assert.True(agent.HasSigningSecret);
+        Assert.Equal("whsec_byo_once", agent.SigningSecret);
+        Assert.NotNull(agent.Connection);
+        Assert.Equal("wss://agent.example.com/calls", agent.Connection!.Url);
+        Assert.Equal(WebSocketAudioFormat.Pcm16At24000, agent.Connection.AudioFormat);
+        Assert.True(agent.Connection.HasAuthToken);
+        Assert.Equal("acme", agent.Connection.CustomParameters!["tenant"]);
+        Assert.Null(agent.Connection.BaseUrl);
+        Assert.Null(agent.Connection.HasApiKey);
+    }
+
+    [Fact]
+    public async Task AgentsUpdateAsync_UnsetSecretsAreLeftOutAndNullSecretsAreSentAsNull()
+    {
+        _mockHandler.QueueSuccessResponse(WebSocketAgentJson);
+
+        await _client.Voice.Agents.UpdateAsync(AgentId, new UpdateVoiceAgentRequest
+        {
+            Connection = new VoiceAgentWebSocketConnectionInput
+            {
+                AudioFormat = WebSocketAudioFormat.Mulaw8000,
+                AuthToken = null,
+            },
+        });
+
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal(new List<string> { "connection" }, KeysOf(body));
+        var connection = body.GetProperty("connection");
+        Assert.Equal(new List<string> { "audioFormat", "authToken" }, KeysOf(connection));
+        Assert.Equal("mulaw_8000", connection.GetProperty("audioFormat").GetString());
+        Assert.Equal(JsonValueKind.Null, connection.GetProperty("authToken").ValueKind);
+    }
+
+    [Fact]
+    public async Task AgentsUpdateAsync_SipAndCustomLlmSecretsCanBeRemovedWithNull()
+    {
+        _mockHandler.QueueSuccessResponse(WebSocketAgentJson);
+        await _client.Voice.Agents.UpdateAsync(AgentId, new UpdateVoiceAgentRequest
+        {
+            Connection = new VoiceAgentSipConnectionInput { Password = null, Headers = null },
+        });
+        var sip = (await JsonBodyOfLastRequest()).GetProperty("connection");
+        Assert.Equal(new List<string> { "headers", "password" }, KeysOf(sip));
+        Assert.Equal(JsonValueKind.Null, sip.GetProperty("password").ValueKind);
+        Assert.Equal(JsonValueKind.Null, sip.GetProperty("headers").ValueKind);
+
+        _mockHandler.QueueSuccessResponse(WebSocketAgentJson);
+        await _client.Voice.Agents.UpdateAsync(AgentId, new UpdateVoiceAgentRequest
+        {
+            Connection = new VoiceAgentCustomLlmConnectionInput { Model = "acme-2" },
+        });
+        var llm = (await JsonBodyOfLastRequest()).GetProperty("connection");
+        Assert.Equal(new List<string> { "model" }, KeysOf(llm));
+    }
+
+    [Fact]
+    public async Task AgentsUpdateAsync_RotateSigningSecret_SendsTrueAndReadsTheNewSecret()
+    {
+        _mockHandler.QueueSuccessResponse(WebSocketAgentJson);
+
+        var agent = await _client.Voice.Agents.UpdateAsync(AgentId, new UpdateVoiceAgentRequest
+        {
+            RotateSigningSecret = true,
+        });
+
+        var request = _mockHandler.LastRequest!;
+        Assert.Equal(HttpMethod.Patch, request.Method);
+        Assert.Equal($"https://api.test.com/voice/agents/{AgentId}", request.RequestUri!.AbsoluteUri);
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal(new List<string> { "rotateSigningSecret" }, KeysOf(body));
+        Assert.True(body.GetProperty("rotateSigningSecret").GetBoolean());
+        Assert.Equal("whsec_byo_once", agent.SigningSecret);
+    }
+
+    [Fact]
+    public async Task AgentsUpdateAsync_RotateSigningSecretFalse_IsNeverSent()
+    {
+        _mockHandler.QueueSuccessResponse(AgentJson);
+
+        await _client.Voice.Agents.UpdateAsync(AgentId, new UpdateVoiceAgentRequest
+        {
+            Kind = VoiceAgentKind.Sendly,
+            RotateSigningSecret = false,
+        });
+
+        var body = await JsonBodyOfLastRequest();
+        Assert.Equal(new List<string> { "kind" }, KeysOf(body));
+        Assert.Equal("sendly", body.GetProperty("kind").GetString());
+    }
+
+    [Fact]
+    public async Task AgentsGetAsync_SendlyAgent_HasNullConnectionAndNoSigningSecret()
+    {
+        _mockHandler.QueueSuccessResponse(AgentJson.Replace(
+            @"""enabled"": true,",
+            @"""enabled"": true, ""kind"": ""sendly"", ""connection"": null, ""hasSigningSecret"": false,"));
+
+        var agent = await _client.Voice.Agents.GetAsync(AgentId);
+
+        Assert.Equal(VoiceAgentKind.Sendly, agent.Kind);
+        Assert.Null(agent.Connection);
+        Assert.False(agent.HasSigningSecret);
+        Assert.Null(agent.SigningSecret);
+    }
+
+    [Fact]
+    public async Task AgentsGetAsync_ReadsSipAndCustomLlmConnections()
+    {
+        _mockHandler.QueueSuccessResponse(AgentJson.Replace(
+            @"""enabled"": true,",
+            @"""enabled"": true, ""kind"": ""sip"", ""hasSigningSecret"": true, ""connection"": {
+                ""uri"": ""sips:front@sip.example.com"", ""transport"": ""tls"", ""mediaEncryption"": ""allow"",
+                ""username"": null, ""hasPassword"": false, ""headers"": { ""X-Account"": ""42"" } },"));
+
+        var sip = await _client.Voice.Agents.GetAsync(AgentId);
+
+        Assert.Equal(VoiceAgentKind.Sip, sip.Kind);
+        Assert.Equal("sips:front@sip.example.com", sip.Connection!.Uri);
+        Assert.Equal(SipTransport.Tls, sip.Connection.Transport);
+        Assert.Equal(SipMediaEncryption.Allow, sip.Connection.MediaEncryption);
+        Assert.Null(sip.Connection.Username);
+        Assert.False(sip.Connection.HasPassword);
+        Assert.Equal("42", sip.Connection.Headers!["X-Account"]);
+        Assert.Null(sip.SigningSecret);
+
+        _mockHandler.QueueSuccessResponse(AgentJson.Replace(
+            @"""enabled"": true,",
+            @"""enabled"": true, ""kind"": ""custom_llm"", ""hasSigningSecret"": true, ""connection"": {
+                ""baseUrl"": ""https://llm.example.com/v1"", ""model"": ""acme-receptionist"",
+                ""headerNames"": [""X-Tenant""], ""hasApiKey"": true },"));
+
+        var llm = await _client.Voice.Agents.GetAsync(AgentId);
+
+        Assert.Equal(VoiceAgentKind.CustomLlm, llm.Kind);
+        Assert.Equal("https://llm.example.com/v1", llm.Connection!.BaseUrl);
+        Assert.Equal("acme-receptionist", llm.Connection.Model);
+        Assert.Equal(new List<string> { "X-Tenant" }, llm.Connection.HeaderNames);
+        Assert.True(llm.Connection.HasApiKey);
+    }
+
+    [Fact]
+    public async Task AgentsGetAsync_KeepsAnUnknownKindAsIs()
+    {
+        _mockHandler.QueueSuccessResponse(AgentJson.Replace(
+            @"""enabled"": true,",
+            @"""enabled"": true, ""kind"": ""future_kind"", ""connection"": null, ""hasSigningSecret"": false,"));
+
+        var agent = await _client.Voice.Agents.GetAsync(AgentId);
+
+        Assert.Equal("future_kind", agent.Kind);
+    }
+
+    [Fact]
+    public async Task AgentsCreateAsync_On403ByoAgentsNotEnabled_ThrowsSendlyExceptionWithCode()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.Forbidden,
+            @"{""error"": ""byo_agents_not_enabled"", ""message"": ""Bring your own agent is not switched on for this workspace.""}");
+
+        var exception = await Assert.ThrowsAsync<SendlyException>(
+            () => _client.Voice.Agents.CreateAsync(new CreateVoiceAgentRequest
+            {
+                Name = "Front desk",
+                Kind = VoiceAgentKind.WebSocket,
+                Connection = new VoiceAgentWebSocketConnectionInput { Url = "wss://agent.example.com/calls" },
+            }));
+
+        Assert.Equal(403, exception.StatusCode);
+        Assert.Equal(CallErrorCode.ByoAgentsNotEnabled, exception.ApiErrorCode);
+    }
+
+    [Fact]
+    public void ByoVocabulary_MatchesTheApi()
+    {
+        Assert.Equal("sendly", VoiceAgentKind.Sendly);
+        Assert.Equal("custom_llm", VoiceAgentKind.CustomLlm);
+        Assert.Equal("sip", VoiceAgentKind.Sip);
+        Assert.Equal("websocket", VoiceAgentKind.WebSocket);
+        Assert.Equal("auto", SipTransport.Auto);
+        Assert.Equal("udp", SipTransport.Udp);
+        Assert.Equal("tcp", SipTransport.Tcp);
+        Assert.Equal("tls", SipTransport.Tls);
+        Assert.Equal("disable", SipMediaEncryption.Disable);
+        Assert.Equal("allow", SipMediaEncryption.Allow);
+        Assert.Equal("require", SipMediaEncryption.Require);
+        Assert.Equal("pcm16_16000", WebSocketAudioFormat.Pcm16At16000);
+        Assert.Equal("pcm16_24000", WebSocketAudioFormat.Pcm16At24000);
+        Assert.Equal("pcm16_8000", WebSocketAudioFormat.Pcm16At8000);
+        Assert.Equal("mulaw_8000", WebSocketAudioFormat.Mulaw8000);
+        Assert.Equal("byo_agents_not_enabled", CallErrorCode.ByoAgentsNotEnabled);
+    }
+
+    #endregion
+
     #region Errors and Constants
 
     [Fact]

@@ -206,13 +206,343 @@ public class VoiceAgentTools
     public bool SendSms { get; set; }
 
     /// <summary>
-    /// A number in E.164 format for callers who need a person, or null.
-    /// Agents cannot transfer calls yet and never dial or read out this
-    /// number: while it is set, a caller who asks for a person is told the
-    /// message will be passed on, and the agent takes their name and number.
+    /// A number in E.164 format the agent transfers a caller to when they ask
+    /// for a person, or null when the agent cannot transfer. It is also where
+    /// <see cref="CallsResource.TransferAsync"/> sends the caller when no
+    /// number is given.
     /// </summary>
     [JsonPropertyName("transferTo")]
     public string? TransferTo { get; set; }
+}
+
+/// <summary>
+/// Who answers an agent's calls. Reported as <see cref="VoiceAgent.Kind"/> and
+/// <see cref="Call.AgentKind"/>, and sent as
+/// <see cref="CreateVoiceAgentRequest.Kind"/> and
+/// <see cref="UpdateVoiceAgentRequest.Kind"/>. Values are plain strings so a
+/// kind added later still deserializes.
+/// </summary>
+public static class VoiceAgentKind
+{
+    /// <summary>Sendly writes the replies from the agent's instructions. The default.</summary>
+    public const string Sendly = "sendly";
+
+    /// <summary>
+    /// Sendly listens and speaks, and your chat completions endpoint writes
+    /// each reply. See <see cref="VoiceAgentCustomLlmConnectionInput"/>.
+    /// </summary>
+    public const string CustomLlm = "custom_llm";
+
+    /// <summary>
+    /// Sendly connects the caller to your agent's SIP address. Answers
+    /// incoming calls only. See <see cref="VoiceAgentSipConnectionInput"/>.
+    /// </summary>
+    public const string Sip = "sip";
+
+    /// <summary>
+    /// Sendly streams the call audio to your <c>wss://</c> server and plays
+    /// back what it sends. Answers incoming calls only. See
+    /// <see cref="VoiceAgentWebSocketConnectionInput"/>.
+    /// </summary>
+    public const string WebSocket = "websocket";
+}
+
+/// <summary>
+/// How a <c>sip</c> agent's call is carried. Reported as
+/// <see cref="VoiceAgentConnection.Transport"/> and sent as
+/// <see cref="VoiceAgentSipConnectionInput.Transport"/>.
+/// </summary>
+public static class SipTransport
+{
+    /// <summary>Chosen automatically.</summary>
+    public const string Auto = "auto";
+
+    /// <summary>UDP.</summary>
+    public const string Udp = "udp";
+
+    /// <summary>TCP. The default.</summary>
+    public const string Tcp = "tcp";
+
+    /// <summary>TLS. A <c>sips:</c> address always uses it.</summary>
+    public const string Tls = "tls";
+}
+
+/// <summary>
+/// Whether a <c>sip</c> agent's call audio is encrypted. Reported as
+/// <see cref="VoiceAgentConnection.MediaEncryption"/> and sent as
+/// <see cref="VoiceAgentSipConnectionInput.MediaEncryption"/>.
+/// </summary>
+public static class SipMediaEncryption
+{
+    /// <summary>Never encrypted.</summary>
+    public const string Disable = "disable";
+
+    /// <summary>Encrypted when the far end offers it. The default.</summary>
+    public const string Allow = "allow";
+
+    /// <summary>Always encrypted; needs the <c>tls</c> transport.</summary>
+    public const string Require = "require";
+}
+
+/// <summary>
+/// The audio format a <c>websocket</c> agent sends and receives. Reported as
+/// <see cref="VoiceAgentConnection.AudioFormat"/> and sent as
+/// <see cref="VoiceAgentWebSocketConnectionInput.AudioFormat"/>.
+/// </summary>
+public static class WebSocketAudioFormat
+{
+    /// <summary>16-bit PCM at 16 kHz. The default.</summary>
+    public const string Pcm16At16000 = "pcm16_16000";
+
+    /// <summary>16-bit PCM at 24 kHz.</summary>
+    public const string Pcm16At24000 = "pcm16_24000";
+
+    /// <summary>16-bit PCM at 8 kHz.</summary>
+    public const string Pcm16At8000 = "pcm16_8000";
+
+    /// <summary>Mu-law at 8 kHz.</summary>
+    public const string Mulaw8000 = "mulaw_8000";
+}
+
+/// <summary>
+/// How Sendly reaches your own agent, as returned on
+/// <see cref="VoiceAgent.Connection"/>. Which properties are set depends on
+/// <see cref="VoiceAgent.Kind"/>; the others are null. Secrets (the API key,
+/// header values for <c>custom_llm</c>, the SIP password and the auth token)
+/// are never returned, only whether one is saved.
+/// </summary>
+public class VoiceAgentConnection
+{
+    /// <summary><c>custom_llm</c>: your endpoint. Sendly sends <c>POST {BaseUrl}/chat/completions</c> with streaming on.</summary>
+    [JsonPropertyName("baseUrl")]
+    public string? BaseUrl { get; set; }
+
+    /// <summary><c>custom_llm</c>: the model name sent in each request.</summary>
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
+
+    /// <summary><c>custom_llm</c>: the names of the extra headers sent with each request. Their values are never returned.</summary>
+    [JsonPropertyName("headerNames")]
+    public List<string>? HeaderNames { get; set; }
+
+    /// <summary><c>custom_llm</c>: whether an API key is saved.</summary>
+    [JsonPropertyName("hasApiKey")]
+    public bool? HasApiKey { get; set; }
+
+    /// <summary><c>sip</c>: your agent's SIP address, such as <c>sip:+15555550100@sip.example.com</c>.</summary>
+    [JsonPropertyName("uri")]
+    public string? Uri { get; set; }
+
+    /// <summary><c>sip</c>: how the call is carried. See <see cref="SipTransport"/>.</summary>
+    [JsonPropertyName("transport")]
+    public string? Transport { get; set; }
+
+    /// <summary><c>sip</c>: whether the call audio is encrypted. See <see cref="SipMediaEncryption"/>.</summary>
+    [JsonPropertyName("mediaEncryption")]
+    public string? MediaEncryption { get; set; }
+
+    /// <summary><c>sip</c>: the digest auth username, or null.</summary>
+    [JsonPropertyName("username")]
+    public string? Username { get; set; }
+
+    /// <summary><c>sip</c>: whether a digest auth password is saved.</summary>
+    [JsonPropertyName("hasPassword")]
+    public bool? HasPassword { get; set; }
+
+    /// <summary><c>sip</c>: the extra <c>X-</c> headers sent on the call.</summary>
+    [JsonPropertyName("headers")]
+    public Dictionary<string, string>? Headers { get; set; }
+
+    /// <summary><c>websocket</c>: your <c>wss://</c> server.</summary>
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+
+    /// <summary><c>websocket</c>: the audio format both ways. See <see cref="WebSocketAudioFormat"/>.</summary>
+    [JsonPropertyName("audioFormat")]
+    public string? AudioFormat { get; set; }
+
+    /// <summary><c>websocket</c>: whether an auth token is saved. It is sent as <c>Authorization: Bearer</c>.</summary>
+    [JsonPropertyName("hasAuthToken")]
+    public bool? HasAuthToken { get; set; }
+
+    /// <summary><c>websocket</c>: the values sent to your server in the <c>start</c> message.</summary>
+    [JsonPropertyName("customParameters")]
+    public Dictionary<string, string>? CustomParameters { get; set; }
+}
+
+/// <summary>
+/// How Sendly reaches your own agent, sent as
+/// <see cref="CreateVoiceAgentRequest.Connection"/> and
+/// <see cref="UpdateVoiceAgentRequest.Connection"/>. Use the subclass that
+/// matches the agent's kind: <see cref="VoiceAgentCustomLlmConnectionInput"/>,
+/// <see cref="VoiceAgentSipConnectionInput"/> or
+/// <see cref="VoiceAgentWebSocketConnectionInput"/>. Properties left unset are
+/// not sent; on an update that keeps the kind, they keep their saved values.
+/// Hosts must resolve to public internet addresses.
+/// </summary>
+[JsonDerivedType(typeof(VoiceAgentCustomLlmConnectionInput))]
+[JsonDerivedType(typeof(VoiceAgentSipConnectionInput))]
+[JsonDerivedType(typeof(VoiceAgentWebSocketConnectionInput))]
+public abstract class VoiceAgentConnectionInput
+{
+}
+
+/// <summary>
+/// Connection for a <c>custom_llm</c> agent: your chat completions endpoint
+/// writes each reply. Setting <see cref="ApiKey"/> or <see cref="Headers"/> to
+/// null sends null, which removes the saved value; leaving them unset keeps it.
+/// </summary>
+public class VoiceAgentCustomLlmConnectionInput : VoiceAgentConnectionInput, IAssignedProperties
+{
+    private readonly HashSet<string> _assigned = new();
+    private string? _apiKey;
+    private Dictionary<string, string>? _headers;
+
+    /// <summary>
+    /// An <c>https://</c> URL, up to 2048 characters, with no credentials or
+    /// <c>#</c>; a trailing <c>/</c> is dropped. Sendly sends
+    /// <c>POST {BaseUrl}/chat/completions</c> with streaming on. Required when
+    /// the agent becomes <c>custom_llm</c>.
+    /// </summary>
+    [JsonPropertyName("baseUrl")]
+    public string? BaseUrl { get; set; }
+
+    /// <summary>The model name sent in each request: 1-200 characters of letters, digits and <c>_ . : / @ + -</c>.</summary>
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
+
+    /// <summary>
+    /// Sent as <c>Authorization: Bearer</c>, 1-2048 printable ASCII
+    /// characters. Unset keeps the saved key; null removes it.
+    /// </summary>
+    [JsonPropertyName("apiKey")]
+    public string? ApiKey
+    {
+        get => _apiKey;
+        set { _apiKey = value; _assigned.Add(nameof(ApiKey)); }
+    }
+
+    /// <summary>
+    /// Up to 10 extra headers with secret values. Replaces the saved set; null
+    /// removes them. <c>Authorization</c>, <c>Content-Type</c>,
+    /// <c>Content-Length</c>, <c>Host</c>, <c>Connection</c>,
+    /// <c>Transfer-Encoding</c>, <c>User-Agent</c> and <c>X-Sendly-*</c> can't
+    /// be set.
+    /// </summary>
+    [JsonPropertyName("headers")]
+    public Dictionary<string, string>? Headers
+    {
+        get => _headers;
+        set { _headers = value; _assigned.Add(nameof(Headers)); }
+    }
+
+    bool IAssignedProperties.IsAssigned(string propertyName) => _assigned.Contains(propertyName);
+}
+
+/// <summary>
+/// Connection for a <c>sip</c> agent: Sendly connects the caller to your SIP
+/// address. Setting <see cref="Username"/>, <see cref="Password"/> or
+/// <see cref="Headers"/> to null sends null, which removes the saved value;
+/// leaving them unset keeps it.
+/// </summary>
+public class VoiceAgentSipConnectionInput : VoiceAgentConnectionInput, IAssignedProperties
+{
+    private readonly HashSet<string> _assigned = new();
+    private string? _username;
+    private string? _password;
+    private Dictionary<string, string>? _headers;
+
+    /// <summary>
+    /// <c>sip:</c> or <c>sips:</c> with a user part and a hostname (not an IP
+    /// address), such as <c>sip:+15555550100@sip.example.com</c>. Only
+    /// <c>;transport=</c> may follow. Required when the agent becomes
+    /// <c>sip</c>.
+    /// </summary>
+    [JsonPropertyName("uri")]
+    public string? Uri { get; set; }
+
+    /// <summary>Defaults to <c>tcp</c>; a <c>sips:</c> address always uses <c>tls</c>. See <see cref="SipTransport"/>.</summary>
+    [JsonPropertyName("transport")]
+    public string? Transport { get; set; }
+
+    /// <summary>Defaults to <c>allow</c>; <c>require</c> needs the <c>tls</c> transport. See <see cref="SipMediaEncryption"/>.</summary>
+    [JsonPropertyName("mediaEncryption")]
+    public string? MediaEncryption { get; set; }
+
+    /// <summary>Digest auth username. Unset keeps the saved one; null removes it.</summary>
+    [JsonPropertyName("username")]
+    public string? Username
+    {
+        get => _username;
+        set { _username = value; _assigned.Add(nameof(Username)); }
+    }
+
+    /// <summary>Digest auth password. Unset keeps the saved one; null removes it.</summary>
+    [JsonPropertyName("password")]
+    public string? Password
+    {
+        get => _password;
+        set { _password = value; _assigned.Add(nameof(Password)); }
+    }
+
+    /// <summary>
+    /// Up to 10 headers named <c>X-...</c> (not <c>X-Sendly-...</c>) sent on
+    /// the call. Replaces the saved set; null removes them.
+    /// </summary>
+    [JsonPropertyName("headers")]
+    public Dictionary<string, string>? Headers
+    {
+        get => _headers;
+        set { _headers = value; _assigned.Add(nameof(Headers)); }
+    }
+
+    bool IAssignedProperties.IsAssigned(string propertyName) => _assigned.Contains(propertyName);
+}
+
+/// <summary>
+/// Connection for a <c>websocket</c> agent: Sendly streams the call audio to
+/// your server. Setting <see cref="AuthToken"/> or
+/// <see cref="CustomParameters"/> to null sends null, which removes the saved
+/// value; leaving them unset keeps it.
+/// </summary>
+public class VoiceAgentWebSocketConnectionInput : VoiceAgentConnectionInput, IAssignedProperties
+{
+    private readonly HashSet<string> _assigned = new();
+    private string? _authToken;
+    private Dictionary<string, string>? _customParameters;
+
+    /// <summary>
+    /// A <c>wss://</c> URL, up to 2048 characters, with no credentials or
+    /// <c>#</c>. Required when the agent becomes <c>websocket</c>.
+    /// </summary>
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+
+    /// <summary>Defaults to <c>pcm16_16000</c>. See <see cref="WebSocketAudioFormat"/>.</summary>
+    [JsonPropertyName("audioFormat")]
+    public string? AudioFormat { get; set; }
+
+    /// <summary>Sent as <c>Authorization: Bearer</c>. Unset keeps the saved token; null removes it.</summary>
+    [JsonPropertyName("authToken")]
+    public string? AuthToken
+    {
+        get => _authToken;
+        set { _authToken = value; _assigned.Add(nameof(AuthToken)); }
+    }
+
+    /// <summary>
+    /// Up to 20 string values sent to your server in the <c>start</c> message.
+    /// Keys are 1-40 characters of letters, digits and <c>_ . : -</c>; values
+    /// are up to 500 characters. Replaces the saved set; null removes them.
+    /// </summary>
+    [JsonPropertyName("customParameters")]
+    public Dictionary<string, string>? CustomParameters
+    {
+        get => _customParameters;
+        set { _customParameters = value; _assigned.Add(nameof(CustomParameters)); }
+    }
+
+    bool IAssignedProperties.IsAssigned(string propertyName) => _assigned.Contains(propertyName);
 }
 
 /// <summary>
@@ -257,6 +587,40 @@ public class VoiceAgent
     /// </summary>
     [JsonPropertyName("enabled")]
     public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Who answers the agent's calls: <c>sendly</c>, or one of your own
+    /// (<c>custom_llm</c>, <c>sip</c>, <c>websocket</c>). See
+    /// <see cref="VoiceAgentKind"/>; a value not listed there comes through
+    /// unchanged.
+    /// </summary>
+    [JsonPropertyName("kind")]
+    public string Kind { get; set; } = VoiceAgentKind.Sendly;
+
+    /// <summary>
+    /// How Sendly reaches your own agent, or null for a <c>sendly</c> agent.
+    /// Secrets are never returned, only whether one is saved.
+    /// </summary>
+    [JsonPropertyName("connection")]
+    public VoiceAgentConnection? Connection { get; set; }
+
+    /// <summary>
+    /// True when the agent has a signing secret. Your own agents do: Sendly
+    /// signs every request to them with it in the <c>X-Sendly-Signature</c>
+    /// header (<c>t=&lt;unix&gt;,v1=&lt;hex HMAC-SHA256&gt;</c>).
+    /// </summary>
+    [JsonPropertyName("hasSigningSecret")]
+    public bool HasSigningSecret { get; set; }
+
+    /// <summary>
+    /// The agent's signing secret, set only when it was just made: on the
+    /// response to creating your own agent, to switching a <c>sendly</c>
+    /// agent to one of your own, and to
+    /// <see cref="UpdateVoiceAgentRequest.RotateSigningSecret"/>. Null
+    /// everywhere else. Save it now; it is never shown again.
+    /// </summary>
+    [JsonPropertyName("signingSecret")]
+    public string? SigningSecret { get; set; }
 
     /// <summary>Voice id, one of <see cref="VoiceVoicesResource.ListAsync"/>.</summary>
     [JsonPropertyName("voice")]
@@ -342,6 +706,23 @@ public class CreateVoiceAgentRequest
     [JsonPropertyName("tools")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public VoiceAgentToolsInput? Tools { get; set; }
+
+    /// <summary>
+    /// <c>sendly</c> (the default), or one of your own: <c>custom_llm</c>,
+    /// <c>sip</c> or <c>websocket</c>. See <see cref="VoiceAgentKind"/>. Your
+    /// own agents need the workspace's bring-your-own-agent feature.
+    /// </summary>
+    [JsonPropertyName("kind")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Kind { get; set; }
+
+    /// <summary>
+    /// How Sendly reaches your own agent, matching <see cref="Kind"/>.
+    /// Required for <c>custom_llm</c>, <c>sip</c> and <c>websocket</c>.
+    /// </summary>
+    [JsonPropertyName("connection")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public VoiceAgentConnectionInput? Connection { get; set; }
 }
 
 /// <summary>
@@ -384,6 +765,37 @@ public class UpdateVoiceAgentRequest
     [JsonPropertyName("tools")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public VoiceAgentToolsInput? Tools { get; set; }
+
+    /// <summary>
+    /// Switch who answers the agent's calls. See <see cref="VoiceAgentKind"/>.
+    /// Switching to one of your own needs <see cref="Connection"/>; a <c>sendly</c> agent gets a
+    /// signing secret (switching between your own kinds keeps it), returned once on <see cref="VoiceAgent.SigningSecret"/>;
+    /// switching to <c>sendly</c> removes the connection and the signing
+    /// secret.
+    /// </summary>
+    [JsonPropertyName("kind")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Kind { get; set; }
+
+    /// <summary>
+    /// How Sendly reaches your own agent, matching the agent's kind. With the
+    /// same kind it is merged into the saved connection: properties left unset
+    /// keep their values. Required when <see cref="Kind"/> changes to one of
+    /// your own.
+    /// </summary>
+    [JsonPropertyName("connection")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public VoiceAgentConnectionInput? Connection { get; set; }
+
+    /// <summary>
+    /// True makes a new signing secret for your own agent; the response
+    /// carries it once on <see cref="VoiceAgent.SigningSecret"/>, and the old
+    /// secret stops working at once. Sent only when true. Refused with 400
+    /// <c>invalid_request</c> on a <c>sendly</c> agent.
+    /// </summary>
+    [JsonPropertyName("rotateSigningSecret")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool RotateSigningSecret { get; set; }
 }
 
 /// <summary>Response from <see cref="VoiceAgentsResource.ListAsync"/>.</summary>
